@@ -1,0 +1,82 @@
+name: Monitor bot health
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check recent forecast runs
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const workflowId = "run_bot_on_tournament.yaml";
+            const alertTitle = "[bot-monitor] Forecast automation needs attention";
+
+            const runsResponse = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: workflowId,
+              per_page: 20,
+            });
+            const latestCompleted = runsResponse.data.workflow_runs.find(
+              (run) => run.status === "completed",
+            );
+            const staleAfterMs = 2 * 60 * 60 * 1000;
+            const isStale =
+              !latestCompleted ||
+              Date.now() - Date.parse(latestCompleted.created_at) > staleAfterMs;
+            const isHealthy =
+              latestCompleted?.conclusion === "success" && !isStale;
+
+            const issuesResponse = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: "open",
+              per_page: 100,
+            });
+            const existingAlert = issuesResponse.data.find(
+              (issue) => issue.title === alertTitle && !issue.pull_request,
+            );
+
+            if (!isHealthy && !existingAlert) {
+              const runDetails = latestCompleted
+                ? `Latest run: ${latestCompleted.html_url}\nConclusion: ${latestCompleted.conclusion}\nCreated: ${latestCompleted.created_at}`
+                : "No completed forecast run was found.";
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title: alertTitle,
+                body: `${runDetails}\n\nThe monitor expects a successful run within the last two hours.`,
+              });
+            }
+
+            if (isHealthy && existingAlert) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existingAlert.number,
+                body: `Recovered: ${latestCompleted.html_url}`,
+              });
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existingAlert.number,
+                state: "closed",
+              });
+            }
+
+            core.info(
+              `health=${isHealthy ? "healthy" : "unhealthy"} latest=${latestCompleted?.html_url ?? "none"}`,
+            );

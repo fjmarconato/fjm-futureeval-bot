@@ -14,6 +14,8 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
 - Las preguntas y predicciones se ejecutan en serie para evitar bloqueos por
   rafagas desde las direcciones compartidas de GitHub Actions.
 - Cada tanda competitiva procesa como maximo tres preguntas nuevas.
+- Un monitor cada seis horas abre una incidencia en GitHub si no hubo una
+  ejecucion exitosa en dos horas y la cierra cuando el bot se recupera.
 - Metaculus Cup queda manual porque los bots no son elegibles para premios alli.
 - Cada ronda usa una version congelada del motor.
 - Los cambios de calibracion se realizan entre rondas cerradas, no sobre
@@ -46,6 +48,11 @@ Configuracion inicial verificada: `gemini/gemini-3.5-flash` para pronosticar,
 `gemini/gemini-3.1-flash-lite` para parsear y `no_research` hasta disponer de
 una cuota de busqueda web. La clave de Google se guarda como secreto, no como
 variable del repositorio.
+
+El precio que muestra `forecasting-tools` es una estimacion de tarifa paga. La
+configuracion actual opera en el nivel gratuito de Gemini, donde texto de
+Gemini 3.5 Flash y Flash-Lite no tiene cargo; la busqueda web queda desactivada
+porque no tiene cuota en este proyecto.
 
 No se compra credito propio durante la validacion sin una decision expresa.
 
