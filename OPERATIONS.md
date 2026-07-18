@@ -14,7 +14,7 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
 - Las preguntas y predicciones se ejecutan en serie para evitar bloqueos por
   rafagas desde las direcciones compartidas de GitHub Actions.
 - Cada tanda competitiva procesa como maximo tres preguntas nuevas.
-- Un monitor cada seis horas abre una incidencia en GitHub si no hubo una
+- Un monitor cada dos horas abre una incidencia en GitHub si no hubo una
   ejecucion exitosa en dos horas y la cierra cuando el bot se recupera.
 - Metaculus Cup queda manual porque los bots no son elegibles para premios alli.
 - Cada ronda usa una version congelada del motor.

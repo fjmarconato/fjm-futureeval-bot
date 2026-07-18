@@ -3,7 +3,7 @@ name: Monitor bot health
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "17 */2 * * *"
 
 permissions:
   actions: read
@@ -59,6 +59,7 @@ jobs:
                 repo,
                 title: alertTitle,
                 body: `${runDetails}\n\nThe monitor expects a successful run within the last two hours.`,
+                assignees: [owner],
               });
             }
 
