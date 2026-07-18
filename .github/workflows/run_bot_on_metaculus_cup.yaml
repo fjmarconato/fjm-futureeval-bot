@@ -2,8 +2,9 @@ name: Forecast on Metaculus Cup
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 0 */2 * *" # runs at midnight every 2 days
+
+permissions:
+  contents: read
 
 # Add concurrency group to prevent parallel runs
 concurrency:
@@ -15,6 +16,7 @@ concurrency:
 jobs:
   forecast_job:
     runs-on: ubuntu-latest # determines the machine that will run the job - keep as is
+    timeout-minutes: 45
     steps: # sets up the steps that will be run in order
       # setup repository with all necessary dependencies - keep as is
       - name: Check out repository
@@ -32,7 +34,7 @@ jobs:
         run: poetry install --no-interaction --no-root
       - name: Run bot
         run: |
-          poetry run python main.py --mode metaculus_cup
+          poetry run python main.py --mode metaculus_cup --publish
         # this reads the environment variables from the github repository.
         # Store under Settings --> Secrets and variables --> Actions
         env:
@@ -44,3 +46,6 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ASKNEWS_CLIENT_ID: ${{ secrets.ASKNEWS_CLIENT_ID }}
           ASKNEWS_SECRET: ${{ secrets.ASKNEWS_SECRET }}
+          FORECAST_MODEL: ${{ vars.FORECAST_MODEL }}
+          PARSER_MODEL: ${{ vars.PARSER_MODEL }}
+          RESEARCH_MODEL: ${{ vars.RESEARCH_MODEL }}

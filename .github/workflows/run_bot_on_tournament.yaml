@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: "7,27,47 * * * *" # every 20 min, offset off the hour. Make sure to skip already-forecasted questions!
 
+permissions:
+  contents: read
+
 # Add concurrency group to prevent parallel runs
 concurrency:
   group: ${{ github.workflow }}
@@ -15,6 +18,7 @@ concurrency:
 jobs:
   forecast_job:
     runs-on: ubuntu-latest # determines the machine that will run the job - keep as is
+    timeout-minutes: 45
     steps: # sets up the steps that will be run in order
       # setup repository with all necessary dependencies - keep as is
       - name: Check out repository
@@ -28,18 +32,16 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
           installer-parallel: true
-      # Adding the below will make the workflow faster, but will mean you don't automatically get updates from forecasting-tools and other packages
-      # - name: Load cached venv
-      #   id: cached-poetry-dependencies
-      #   uses: actions/cache@v4
-      #   with:
-      #     path: .venv
-      #     key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Load cached venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
       - name: Install dependencies
         run: poetry install --no-interaction --no-root
       - name: Run bot
         run: |
-          poetry run python main.py
+          poetry run python main.py --mode tournament --publish
         # this reads the environment variables from the github repository.
         # Store under Settings --> Secrets and variables --> Actions
         env:
@@ -51,3 +53,8 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ASKNEWS_CLIENT_ID: ${{ secrets.ASKNEWS_CLIENT_ID }}
           ASKNEWS_SECRET: ${{ secrets.ASKNEWS_SECRET }}
+          FORECAST_MODEL: ${{ vars.FORECAST_MODEL }}
+          PARSER_MODEL: ${{ vars.PARSER_MODEL }}
+          RESEARCH_MODEL: ${{ vars.RESEARCH_MODEL }}
+          PREDICTIONS_PER_RESEARCH_REPORT: ${{ vars.PREDICTIONS_PER_RESEARCH_REPORT }}
+          RESEARCH_REPORTS_PER_QUESTION: ${{ vars.RESEARCH_REPORTS_PER_QUESTION }}

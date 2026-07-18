@@ -3,6 +3,9 @@ name: Test Bot
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 # Add concurrency group to prevent parallel runs
 concurrency:
   group: ${{ github.workflow }}
@@ -13,6 +16,7 @@ concurrency:
 jobs:
   forecast_job:
     runs-on: ubuntu-latest # determines the machine that will run the job - keep as is
+    timeout-minutes: 45
     steps: # sets up the steps that will be run in order
       # setup repository with all necessary dependencies - keep as is
       - name: Check out repository
@@ -37,7 +41,7 @@ jobs:
         run: poetry install --no-interaction --no-root
       - name: Run bot
         run: |
-          poetry run python main.py --mode test_questions
+          poetry run python main.py --mode test_questions --publish
         # this reads the environment variables from the github repository.
         # Store under Settings --> Secrets and variables --> Actions
         env:
@@ -49,3 +53,8 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ASKNEWS_CLIENT_ID: ${{ secrets.ASKNEWS_CLIENT_ID }}
           ASKNEWS_SECRET: ${{ secrets.ASKNEWS_SECRET }}
+          FORECAST_MODEL: ${{ vars.FORECAST_MODEL }}
+          PARSER_MODEL: ${{ vars.PARSER_MODEL }}
+          RESEARCH_MODEL: ${{ vars.RESEARCH_MODEL }}
+          PREDICTIONS_PER_RESEARCH_REPORT: ${{ vars.PREDICTIONS_PER_RESEARCH_REPORT }}
+          RESEARCH_REPORTS_PER_QUESTION: ${{ vars.RESEARCH_REPORTS_PER_QUESTION }}
