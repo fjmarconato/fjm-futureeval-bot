@@ -3,7 +3,7 @@ import asyncio
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Literal, Sequence
 
 import dotenv
 
@@ -27,6 +27,7 @@ from forecasting_tools import (
     AskNewsSearcher,
     BinaryQuestion,
     ForecastBot,
+    ForecastReport,
     GeneralLlm,
     MetaculusClient,
     MetaculusQuestion,
@@ -71,7 +72,59 @@ class FJMForecastBot2026(ForecastBot):
         1  # Set this to whatever works for your search-provider/ai-model rate limits
     )
     _concurrency_limiter = asyncio.Semaphore(_max_concurrent_questions)
+    _prediction_limiter = asyncio.Semaphore(1)
     _structure_output_validation_samples = 1
+
+    async def forecast_questions(
+        self,
+        questions: Sequence[MetaculusQuestion],
+        return_exceptions: bool = False,
+    ) -> list[ForecastReport | BaseException]:
+        """Process questions serially to avoid shared-IP proxy rate limits."""
+        questions_to_run = list(questions)
+        if self.skip_previously_forecasted_questions:
+            unforecasted = [
+                question
+                for question in questions_to_run
+                if not question.already_forecasted
+            ]
+            skipped = len(questions_to_run) - len(unforecasted)
+            if skipped:
+                logger.info("Skipping %s previously forecasted questions", skipped)
+            questions_to_run = unforecasted
+
+        raw_limit = os.getenv("MAX_QUESTIONS_PER_RUN", "").strip()
+        if raw_limit:
+            limit = int(raw_limit)
+            if limit <= 0:
+                raise ValueError("MAX_QUESTIONS_PER_RUN must be a positive integer")
+            questions_to_run = questions_to_run[:limit]
+
+        reports: list[ForecastReport | BaseException] = []
+        original_skip_setting = self.skip_previously_forecasted_questions
+        self.skip_previously_forecasted_questions = False
+        try:
+            for question in questions_to_run:
+                single_report = await super().forecast_questions(
+                    [question], return_exceptions=return_exceptions
+                )
+                reports.extend(single_report)
+        finally:
+            self.skip_previously_forecasted_questions = original_skip_setting
+        return reports
+
+    async def _make_prediction(
+        self, question: MetaculusQuestion, research: str
+    ) -> ReasonedPrediction[PredictionTypes]:
+        async with self._prediction_limiter:
+            try:
+                return await super()._make_prediction(question, research)
+            finally:
+                cooldown = float(
+                    os.getenv("LLM_REQUEST_COOLDOWN_SECONDS", "1.5")
+                )
+                if cooldown > 0:
+                    await asyncio.sleep(cooldown)
 
     async def _aggregate_predictions(
         self,
@@ -777,17 +830,18 @@ if __name__ == "__main__":
     # summary printers below.
     client = MetaculusClient()
     if run_mode == "tournament":
-        seasonal_tournament_reports = asyncio.run(
-            bot.forecast_on_tournament(
+        async def forecast_live_tournaments() -> list[
+            ForecastReport | BaseException
+        ]:
+            seasonal_reports = await bot.forecast_on_tournament(
                 client.CURRENT_AI_COMPETITION_ID, return_exceptions=True
             )
-        )
-        minibench_reports = asyncio.run(
-            bot.forecast_on_tournament(
+            minibench_reports = await bot.forecast_on_tournament(
                 client.CURRENT_MINIBENCH_ID, return_exceptions=True
             )
-        )
-        forecast_reports = seasonal_tournament_reports + minibench_reports
+            return seasonal_reports + minibench_reports
+
+        forecast_reports = asyncio.run(forecast_live_tournaments())
     elif run_mode == "metaculus_cup":
         # The Metaculus Cup may be uninitialized near the start of a season
         # (Jan/May/Sep). AXC_2025_TOURNAMENT_ID = 32564 and

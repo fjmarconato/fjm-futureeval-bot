@@ -11,6 +11,9 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
 - `main.py` no publica por defecto. Publicar requiere `--publish`.
 - Los secretos nunca se guardan en el repositorio.
 - El workflow competitivo omite preguntas ya pronosticadas.
+- Las preguntas y predicciones se ejecutan en serie para evitar bloqueos por
+  rafagas desde las direcciones compartidas de GitHub Actions.
+- Cada tanda competitiva procesa como maximo tres preguntas nuevas.
 - Metaculus Cup queda manual porque los bots no son elegibles para premios alli.
 - Cada ronda usa una version congelada del motor.
 - Los cambios de calibracion se realizan entre rondas cerradas, no sobre
@@ -35,8 +38,9 @@ secretos:
 - `FORECAST_MODEL`
 - `PARSER_MODEL`
 - `RESEARCH_MODEL`
-- `PREDICTIONS_PER_RESEARCH_REPORT` (inicial: `5`)
+- `PREDICTIONS_PER_RESEARCH_REPORT` (inicial: `2`)
 - `RESEARCH_REPORTS_PER_QUESTION` (inicial: `1`)
+- `MAX_QUESTIONS_PER_RUN` (inicial: `3`)
 
 No se compra credito propio durante la validacion sin una decision expresa.
 

@@ -13,6 +13,7 @@ floors, dry-run defaults, tests, and scheduled GitHub Actions operation.
 - `.github/workflows/run_bot_on_tournament.yaml` checks for new eligible
   questions every 20 minutes.
 - `.github/workflows/test_bot.yaml` is the manual end-to-end smoke test.
+- Questions and model calls run serially to stay below shared proxy rate limits.
 - `OPERATIONS.md` records setup, cost controls, and the stop/scale criteria.
 
 The CLI is safe by default. It will only publish when `--publish` is present.
