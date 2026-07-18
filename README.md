@@ -27,9 +27,9 @@ poetry install
 cp .env.template .env
 ```
 
-At minimum, configure `METACULUS_TOKEN`. A provider key such as
-`OPENROUTER_API_KEY` is optional when Metaculus-hosted models and competition
-credits are available.
+At minimum, configure `METACULUS_TOKEN` and one model-provider key such as
+`GOOGLE_API_KEY` or `OPENROUTER_API_KEY`. Metaculus-hosted models can be used
+only after the bot account receives a competition allowance.
 
 ## Run
 

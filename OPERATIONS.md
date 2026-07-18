@@ -42,6 +42,11 @@ secretos:
 - `RESEARCH_REPORTS_PER_QUESTION` (inicial: `1`)
 - `MAX_QUESTIONS_PER_RUN` (inicial: `3`)
 
+Configuracion inicial verificada: `gemini/gemini-3.5-flash` para pronosticar,
+`gemini/gemini-3.1-flash-lite` para parsear y `no_research` hasta disponer de
+una cuota de busqueda web. La clave de Google se guarda como secreto, no como
+variable del repositorio.
+
 No se compra credito propio durante la validacion sin una decision expresa.
 
 ## Criterio de corte
