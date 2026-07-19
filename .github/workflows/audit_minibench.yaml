@@ -1,0 +1,76 @@
+name: Audit MiniBench API
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect authenticated MiniBench API responses
+        env:
+          METACULUS_TOKEN: ${{ secrets.METACULUS_TOKEN }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          from collections import Counter
+
+          base = "https://www.metaculus.com/api"
+          headers = {
+              "Authorization": f"Token {os.environ['METACULUS_TOKEN']}",
+              "User-Agent": "FJMForecastBot2026-audit/1.0",
+          }
+
+          def request(path, params=None):
+              url = base + path
+              if params:
+                  url += "?" + urllib.parse.urlencode(params, doseq=True)
+              req = urllib.request.Request(url, headers=headers)
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      payload = json.load(response)
+                  print(f"endpoint={path} params={params} status=200")
+                  if isinstance(payload, dict) and "results" in payload:
+                      results = payload.get("results", [])
+                      states = Counter()
+                      for post in results:
+                          question = (
+                              post.get("question")
+                              or post.get("group_of_questions")
+                              or post.get("conditional")
+                              or {}
+                          )
+                          states[post.get("status") or question.get("status") or "unknown"] += 1
+                      print(f"count={payload.get('count')} page_results={len(results)} states={dict(states)}")
+                      print("post_ids=" + ",".join(str(post.get("id")) for post in results[:10]))
+                  elif isinstance(payload, dict):
+                      print("keys=" + ",".join(sorted(payload.keys())))
+              except urllib.error.HTTPError as exc:
+                  body = exc.read(500).decode("utf-8", errors="replace")
+                  print(f"endpoint={path} params={params} status={exc.code} body={body}")
+
+          common = {
+              "limit": 100,
+              "offset": 0,
+              "order_by": "-published_at",
+              "with_cp": "true",
+              "include_conditional_cps": "true",
+          }
+          for key in ("tournaments", "projects", "series"):
+              request("/posts/", {**common, key: "minibench"})
+              request("/posts/", {**common, key: "minibench", "statuses": "open"})
+          for path in (
+              "/projects/minibench/",
+              "/tournaments/minibench/",
+              "/question-series/minibench/",
+          ):
+              request(path)
+          PY
