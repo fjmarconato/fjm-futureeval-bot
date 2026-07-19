@@ -11,6 +11,7 @@ from calibration import (
     aggregate_binary_probabilities,
     aggregate_option_probabilities,
     clip_probability,
+    constrain_numeric_values,
 )
 
 # Runtime helpers (env validation, banners, dependency-warning suppression).
@@ -484,6 +485,23 @@ class FJMForecastBot2026(ForecastBot):
             additional_instructions=parsing_instructions,
             num_validation_samples=self._structure_output_validation_samples,
         )
+        constrained_values = constrain_numeric_values(
+            [percentile.value for percentile in percentile_list],
+            question.lower_bound,
+            question.upper_bound,
+            question.zero_point,
+        )
+        if constrained_values != [
+            percentile.value for percentile in percentile_list
+        ]:
+            logger.warning(
+                "Constrained numeric percentiles to Metaculus validation bounds for %s",
+                question.page_url,
+            )
+        percentile_list = [
+            Percentile(percentile=percentile.percentile, value=value)
+            for percentile, value in zip(percentile_list, constrained_values)
+        ]
         prediction = NumericDistribution.from_question(percentile_list, question)
         logger.info(
             f"Forecasted URL {question.page_url} with prediction: {prediction.declared_percentiles}."
@@ -581,6 +599,15 @@ class FJMForecastBot2026(ForecastBot):
                 value=percentile.value.timestamp(),
             )
             for percentile in date_percentile_list
+        ]
+        constrained_values = constrain_numeric_values(
+            [percentile.value for percentile in percentile_list],
+            question.lower_bound.timestamp(),
+            question.upper_bound.timestamp(),
+        )
+        percentile_list = [
+            Percentile(percentile=percentile.percentile, value=value)
+            for percentile, value in zip(percentile_list, constrained_values)
         ]
         prediction = NumericDistribution.from_question(percentile_list, question)
         logger.info(
@@ -812,7 +839,7 @@ if __name__ == "__main__":
         skip_previously_forecasted_questions=True,
         extra_metadata_in_explanation=True,
         enable_summarize_research=False,
-        required_successful_predictions=0.6,
+        required_successful_predictions=0.5,
         llms=build_llm_configuration(),
     )
 

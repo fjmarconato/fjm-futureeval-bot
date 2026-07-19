@@ -5,6 +5,7 @@ from calibration import (
     aggregate_binary_probabilities,
     aggregate_option_probabilities,
     clip_probability,
+    constrain_numeric_values,
 )
 
 
@@ -43,6 +44,30 @@ class CalibrationTests(unittest.TestCase):
     def test_multiple_choice_rejects_mismatched_rows(self) -> None:
         with self.assertRaisesRegex(ValueError, "same length"):
             aggregate_option_probabilities([[0.5, 0.5], [0.3, 0.3, 0.4]])
+
+    def test_numeric_values_stay_inside_sdk_validation_envelope(self) -> None:
+        result = constrain_numeric_values(
+            [15.3, 15.4, 16.2, 17.3],
+            lower_bound=16.1,
+            upper_bound=16.5,
+        )
+        self.assertGreater(result[0], 15.3)
+        self.assertEqual(result[1:3], [15.4, 16.2])
+        self.assertLess(result[3], 17.3)
+
+    def test_numeric_values_respect_log_scale_zero_point(self) -> None:
+        result = constrain_numeric_values(
+            [-10.0, 2.0],
+            lower_bound=1.0,
+            upper_bound=5.0,
+            zero_point=0.0,
+        )
+        self.assertGreater(result[0], 0.0)
+        self.assertEqual(result[1], 2.0)
+
+    def test_numeric_values_reject_invalid_bounds(self) -> None:
+        with self.assertRaisesRegex(ValueError, "smaller"):
+            constrain_numeric_values([1.0], lower_bound=2.0, upper_bound=2.0)
 
 
 if __name__ == "__main__":

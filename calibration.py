@@ -14,6 +14,34 @@ from collections.abc import Sequence
 DEFAULT_MIN_PROBABILITY = 0.02
 
 
+def constrain_numeric_values(
+    values: Sequence[float],
+    lower_bound: float,
+    upper_bound: float,
+    zero_point: float | None = None,
+) -> list[float]:
+    """Keep numeric percentiles inside the SDK's accepted validation envelope."""
+    if not math.isfinite(lower_bound) or not math.isfinite(upper_bound):
+        raise ValueError("numeric bounds must be finite")
+    if lower_bound >= upper_bound:
+        raise ValueError("lower_bound must be smaller than upper_bound")
+    if any(not math.isfinite(value) for value in values):
+        raise ValueError("numeric values must be finite")
+
+    span = upper_bound - lower_bound
+    epsilon = max(abs(lower_bound), abs(upper_bound), span, 1.0) * 1e-9
+    safe_lower = lower_bound - 2 * span + epsilon
+    safe_upper = upper_bound + 2 * span - epsilon
+    if zero_point is not None:
+        if not math.isfinite(zero_point):
+            raise ValueError("zero_point must be finite")
+        safe_lower = max(safe_lower, zero_point + epsilon)
+    if safe_lower > safe_upper:
+        raise ValueError("numeric validation envelope is empty")
+
+    return [min(safe_upper, max(safe_lower, value)) for value in values]
+
+
 def clip_probability(
     probability: float,
     minimum: float = DEFAULT_MIN_PROBABILITY,
