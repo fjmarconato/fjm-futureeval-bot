@@ -33,7 +33,10 @@ jobs:
             const latestCompleted = runsResponse.data.workflow_runs.find(
               (run) => run.status === "completed",
             );
-            const staleAfterMs = 2 * 60 * 60 * 1000;
+            // Scheduled Actions can be delayed for several hours under load.
+            // Six hours catches a real outage without alerting on normal jitter.
+            const staleAfterHours = 6;
+            const staleAfterMs = staleAfterHours * 60 * 60 * 1000;
             const isStale =
               !latestCompleted ||
               Date.now() - Date.parse(latestCompleted.created_at) > staleAfterMs;
@@ -58,7 +61,7 @@ jobs:
                 owner,
                 repo,
                 title: alertTitle,
-                body: `${runDetails}\n\nThe monitor expects a successful run within the last two hours.`,
+                body: `${runDetails}\n\nThe monitor expects a successful run within the last ${staleAfterHours} hours.`,
                 assignees: [owner],
               });
             }

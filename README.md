@@ -14,7 +14,8 @@ floors, dry-run defaults, tests, and scheduled GitHub Actions operation.
   questions every 20 minutes.
 - `.github/workflows/test_bot.yaml` is the manual end-to-end smoke test.
 - `.github/workflows/monitor_bot_health.yaml` checks the scheduler every two
-  hours and manages a GitHub issue when operation becomes unhealthy.
+  hours and manages a GitHub issue when operation becomes unhealthy. A run is
+  considered stale after six hours to tolerate GitHub Actions scheduling delay.
 - Questions and model calls run serially to stay below shared proxy rate limits.
 - `OPERATIONS.md` records setup, cost controls, and the stop/scale criteria.
 
