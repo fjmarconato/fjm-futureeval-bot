@@ -49,8 +49,8 @@ secretos:
 La configuracion preparada para la proxima ronda usa
 `gemini/gemini-3.6-flash` para pronosticar,
 `gemini/gemini-3.1-flash-lite` para parsear y
-`grounded/gemini/gemini-3.1-flash-lite` para investigacion con Google Search.
-La clave de Google se guarda como secreto, no como variable del repositorio.
+`no_research` hasta que la cuenta tenga una cuota de busqueda habilitada. La
+clave de Google se guarda como secreto, no como variable del repositorio.
 
 El precio que muestra `forecasting-tools` es una estimacion de tarifa paga. La
 configuracion actual opera en el nivel gratuito de Gemini, donde texto de
@@ -60,6 +60,11 @@ porque no tiene cuota en este proyecto.
 No se compra credito propio durante la validacion sin una decision expresa. La
 configuracion nueva se activa el 24 de agosto de 2026 para no cambiar el motor
 durante la MiniBench abierta.
+
+La prueba remota del 10 de agosto confirmo que `gemini/gemini-3.6-flash`
+funciona. Google Search grounding devolvio `429 RESOURCE_EXHAUSTED` y el proxy
+patrocinado de Metaculus no tenia allowance para `gpt-5` ni
+`gpt-4o-search-preview`; por eso esas opciones quedan desactivadas.
 
 ## Criterio de corte
 
