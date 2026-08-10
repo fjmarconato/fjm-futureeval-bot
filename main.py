@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Literal, Sequence
 
 import dotenv
@@ -55,6 +55,46 @@ dotenv.load_dotenv()
 logger = logging.getLogger(__name__)
 
 
+def _latest_forecast_time(question: MetaculusQuestion) -> datetime | None:
+    forecasts = question.previous_forecasts or []
+    timestamps = [forecast.timestamp for forecast in forecasts if forecast.timestamp]
+    if not timestamps:
+        return None
+    latest = max(timestamps)
+    return latest if latest.tzinfo else latest.replace(tzinfo=timezone.utc)
+
+
+def select_questions_for_run(
+    questions: Sequence[MetaculusQuestion],
+    *,
+    skip_previously_forecasted: bool,
+    max_questions: int | None,
+    refresh_after_hours: float = 0,
+    now: datetime | None = None,
+) -> list[MetaculusQuestion]:
+    """Prioritize uncovered questions, then the stalest eligible forecasts."""
+    candidates = list(questions)
+    if not skip_previously_forecasted:
+        return candidates[:max_questions] if max_questions else candidates
+
+    new_questions = [q for q in candidates if not q.already_forecasted]
+    refresh_questions: list[tuple[datetime, MetaculusQuestion]] = []
+    if refresh_after_hours > 0:
+        cutoff = (now or datetime.now(timezone.utc)) - timedelta(
+            hours=refresh_after_hours
+        )
+        for question in candidates:
+            if not question.already_forecasted:
+                continue
+            latest = _latest_forecast_time(question)
+            if latest is not None and latest <= cutoff:
+                refresh_questions.append((latest, question))
+        refresh_questions.sort(key=lambda item: item[0])
+
+    selected = new_questions + [question for _, question in refresh_questions]
+    return selected[:max_questions] if max_questions else selected
+
+
 class FJMForecastBot2026(ForecastBot):
     """
     Resolution-first forecasting bot for FJM's autonomous FutureEval entry.
@@ -82,24 +122,32 @@ class FJMForecastBot2026(ForecastBot):
         return_exceptions: bool = False,
     ) -> list[ForecastReport | BaseException]:
         """Process questions serially to avoid shared-IP proxy rate limits."""
-        questions_to_run = list(questions)
-        if self.skip_previously_forecasted_questions:
-            unforecasted = [
-                question
-                for question in questions_to_run
-                if not question.already_forecasted
-            ]
-            skipped = len(questions_to_run) - len(unforecasted)
-            if skipped:
-                logger.info("Skipping %s previously forecasted questions", skipped)
-            questions_to_run = unforecasted
-
         raw_limit = os.getenv("MAX_QUESTIONS_PER_RUN", "").strip()
+        limit: int | None = None
         if raw_limit:
             limit = int(raw_limit)
             if limit <= 0:
                 raise ValueError("MAX_QUESTIONS_PER_RUN must be a positive integer")
-            questions_to_run = questions_to_run[:limit]
+
+        refresh_after_hours = float(
+            os.getenv("REFRESH_AFTER_HOURS", "0").strip() or "0"
+        )
+        if refresh_after_hours < 0:
+            raise ValueError("REFRESH_AFTER_HOURS cannot be negative")
+        questions_to_run = select_questions_for_run(
+            questions,
+            skip_previously_forecasted=self.skip_previously_forecasted_questions,
+            max_questions=limit,
+            refresh_after_hours=refresh_after_hours,
+        )
+        new_count = sum(not question.already_forecasted for question in questions_to_run)
+        refresh_count = len(questions_to_run) - new_count
+        logger.info(
+            "Selected %s new and %s stale question(s) from %s eligible question(s)",
+            new_count,
+            refresh_count,
+            len(questions),
+        )
 
         reports: list[ForecastReport | BaseException] = []
         original_skip_setting = self.skip_previously_forecasted_questions
@@ -761,9 +809,14 @@ def build_llm_configuration() -> dict[str, str | GeneralLlm | None] | None:
 
     llms = FJMForecastBot2026._llm_config_defaults()
     if forecast_model:
+        forecast_temperature: float | None = float(
+            os.getenv("FORECAST_TEMPERATURE", "0.35")
+        )
+        if "gemini-3.6" in forecast_model:
+            forecast_temperature = None
         llms["default"] = GeneralLlm(
             model=forecast_model,
-            temperature=float(os.getenv("FORECAST_TEMPERATURE", "0.35")),
+            temperature=forecast_temperature,
             timeout=180,
             allowed_tries=3,
         )
@@ -777,6 +830,11 @@ def build_llm_configuration() -> dict[str, str | GeneralLlm | None] | None:
     if research_model:
         if research_model.startswith(("asknews/", "smart-searcher/")):
             llms["researcher"] = research_model
+        elif research_model.startswith("grounded/"):
+            grounded_model = research_model.removeprefix("grounded/")
+            if not grounded_model:
+                raise ValueError("grounded/ research model must include a model name")
+            llms["researcher"] = GeneralLlm.grounded_model(grounded_model)
         elif research_model in {"None", "no_research"}:
             llms["researcher"] = "no_research"
         else:

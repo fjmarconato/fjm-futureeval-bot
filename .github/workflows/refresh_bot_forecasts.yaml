@@ -1,0 +1,68 @@
+name: Refresh stale AI tournament forecasts
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "35 3 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: forecast-tournament-writes
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.event_name == 'workflow_dispatch' || github.event.repository.updated_at != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check activation date
+        id: activation
+        shell: bash
+        run: |
+          if [[ -n "${NEXT_CONFIG_ACTIVATION_UTC}" && "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "${NEXT_CONFIG_ACTIVATION_UTC}" ]]; then
+            echo "active=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "active=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          NEXT_CONFIG_ACTIVATION_UTC: ${{ vars.NEXT_CONFIG_ACTIVATION_UTC }}
+      - name: Check out repository
+        if: steps.activation.outputs.active == 'true'
+        uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        if: steps.activation.outputs.active == 'true'
+        with:
+          python-version: "3.11"
+      - name: Install poetry
+        if: steps.activation.outputs.active == 'true'
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+      - name: Load cached venv
+        if: steps.activation.outputs.active == 'true'
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Install dependencies
+        if: steps.activation.outputs.active == 'true'
+        run: poetry install --no-interaction --no-root
+      - name: Refresh stale forecasts
+        if: steps.activation.outputs.active == 'true'
+        run: poetry run python main.py --mode tournament --publish
+        env:
+          METACULUS_TOKEN: ${{ secrets.METACULUS_TOKEN }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          FORECAST_MODEL: ${{ vars.NEXT_FORECAST_MODEL }}
+          PARSER_MODEL: ${{ vars.PARSER_MODEL }}
+          RESEARCH_MODEL: ${{ vars.NEXT_RESEARCH_MODEL }}
+          PREDICTIONS_PER_RESEARCH_REPORT: ${{ vars.NEXT_PREDICTIONS_PER_RESEARCH_REPORT }}
+          RESEARCH_REPORTS_PER_QUESTION: ${{ vars.RESEARCH_REPORTS_PER_QUESTION }}
+          MAX_QUESTIONS_PER_RUN: 3
+          REFRESH_AFTER_HOURS: 72
+          LLM_REQUEST_COOLDOWN_SECONDS: 2

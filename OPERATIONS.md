@@ -13,7 +13,9 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
 - El workflow competitivo omite preguntas ya pronosticadas.
 - Las preguntas y predicciones se ejecutan en serie para evitar bloqueos por
   rafagas desde las direcciones compartidas de GitHub Actions.
-- Cada tanda competitiva procesa como maximo tres preguntas nuevas.
+- Cada tanda competitiva procesa como maximo seis preguntas nuevas.
+- Desde la siguiente ronda, un ciclo diario refresca hasta tres pronosticos con
+  al menos 72 horas de antiguedad, siempre despues de cubrir preguntas nuevas.
 - Un monitor cada dos horas abre una incidencia en GitHub si no hubo una
   ejecucion exitosa en dos horas y la cierra cuando el bot se recupera.
 - Metaculus Cup queda manual porque los bots no son elegibles para premios alli.
@@ -44,17 +46,20 @@ secretos:
 - `RESEARCH_REPORTS_PER_QUESTION` (inicial: `1`)
 - `MAX_QUESTIONS_PER_RUN` (inicial: `3`)
 
-Configuracion inicial verificada: `gemini/gemini-3.5-flash` para pronosticar,
-`gemini/gemini-3.1-flash-lite` para parsear y `no_research` hasta disponer de
-una cuota de busqueda web. La clave de Google se guarda como secreto, no como
-variable del repositorio.
+La configuracion preparada para la proxima ronda usa
+`gemini/gemini-3.6-flash` para pronosticar,
+`gemini/gemini-3.1-flash-lite` para parsear y
+`grounded/gemini/gemini-3.1-flash-lite` para investigacion con Google Search.
+La clave de Google se guarda como secreto, no como variable del repositorio.
 
 El precio que muestra `forecasting-tools` es una estimacion de tarifa paga. La
 configuracion actual opera en el nivel gratuito de Gemini, donde texto de
 Gemini 3.5 Flash y Flash-Lite no tiene cargo; la busqueda web queda desactivada
 porque no tiene cuota en este proyecto.
 
-No se compra credito propio durante la validacion sin una decision expresa.
+No se compra credito propio durante la validacion sin una decision expresa. La
+configuracion nueva se activa el 24 de agosto de 2026 para no cambiar el motor
+durante la MiniBench abierta.
 
 ## Criterio de corte
 

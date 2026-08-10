@@ -2,6 +2,17 @@ name: Forecast on new AI tournament questions
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish forecasts to Metaculus
+        required: true
+        default: false
+        type: boolean
+      use_next_config:
+        description: Test the configuration scheduled for the next round
+        required: true
+        default: false
+        type: boolean
   schedule:
     - cron: "7,27,47 * * * *" # every 20 min, offset off the hour. Make sure to skip already-forecasted questions!
 
@@ -10,7 +21,7 @@ permissions:
 
 # Add concurrency group to prevent parallel runs
 concurrency:
-  group: ${{ github.workflow }}
+  group: forecast-tournament-writes
   cancel-in-progress: false
 
 
@@ -41,7 +52,27 @@ jobs:
         run: poetry install --no-interaction --no-root
       - name: Run bot
         run: |
-          poetry run python main.py --mode tournament --publish
+          activate_next=false
+          if [[ "${USE_NEXT_CONFIG}" == "true" ]]; then
+            activate_next=true
+          elif [[ -n "${NEXT_CONFIG_ACTIVATION_UTC}" && "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "${NEXT_CONFIG_ACTIVATION_UTC}" ]]; then
+            activate_next=true
+          fi
+          if [[ "${activate_next}" == "true" ]]; then
+            : "${NEXT_FORECAST_MODEL:?NEXT_FORECAST_MODEL is required}"
+            : "${NEXT_RESEARCH_MODEL:?NEXT_RESEARCH_MODEL is required}"
+            : "${NEXT_PREDICTIONS_PER_RESEARCH_REPORT:?NEXT_PREDICTIONS_PER_RESEARCH_REPORT is required}"
+            : "${NEXT_MAX_QUESTIONS_PER_RUN:?NEXT_MAX_QUESTIONS_PER_RUN is required}"
+            export FORECAST_MODEL="${NEXT_FORECAST_MODEL}"
+            export RESEARCH_MODEL="${NEXT_RESEARCH_MODEL}"
+            export PREDICTIONS_PER_RESEARCH_REPORT="${NEXT_PREDICTIONS_PER_RESEARCH_REPORT}"
+            export MAX_QUESTIONS_PER_RUN="${NEXT_MAX_QUESTIONS_PER_RUN}"
+          fi
+          args=(--mode tournament)
+          if [[ "${PUBLISH_FORECASTS}" == "true" ]]; then
+            args+=(--publish)
+          fi
+          poetry run python main.py "${args[@]}"
         # this reads the environment variables from the github repository.
         # Store under Settings --> Secrets and variables --> Actions
         env:
@@ -61,3 +92,10 @@ jobs:
           RESEARCH_REPORTS_PER_QUESTION: ${{ vars.RESEARCH_REPORTS_PER_QUESTION }}
           MAX_QUESTIONS_PER_RUN: ${{ vars.MAX_QUESTIONS_PER_RUN }}
           LLM_REQUEST_COOLDOWN_SECONDS: 2
+          PUBLISH_FORECASTS: ${{ github.event_name == 'schedule' || inputs.publish }}
+          USE_NEXT_CONFIG: ${{ inputs.use_next_config || false }}
+          NEXT_CONFIG_ACTIVATION_UTC: ${{ vars.NEXT_CONFIG_ACTIVATION_UTC }}
+          NEXT_FORECAST_MODEL: ${{ vars.NEXT_FORECAST_MODEL }}
+          NEXT_RESEARCH_MODEL: ${{ vars.NEXT_RESEARCH_MODEL }}
+          NEXT_PREDICTIONS_PER_RESEARCH_REPORT: ${{ vars.NEXT_PREDICTIONS_PER_RESEARCH_REPORT }}
+          NEXT_MAX_QUESTIONS_PER_RUN: ${{ vars.NEXT_MAX_QUESTIONS_PER_RUN }}
