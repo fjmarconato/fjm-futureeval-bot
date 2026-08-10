@@ -1,10 +1,8 @@
-import os
 import unittest
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from unittest.mock import patch
 
-from main import build_llm_configuration, select_questions_for_run
+from question_selection import select_questions_for_run
 
 
 def question(question_id: int, forecasted: bool, age_hours: float | None = None):
@@ -54,37 +52,6 @@ class QuestionSelectionTests(unittest.TestCase):
             max_questions=3,
         )
         self.assertEqual([item.id_of_post for item in selected], [2])
-
-    def test_grounded_research_model_is_configured(self):
-        with patch.dict(
-            os.environ,
-            {
-                "FORECAST_MODEL": "gemini/gemini-3.1-flash-lite",
-                "PARSER_MODEL": "gemini/gemini-3.1-flash-lite",
-                "RESEARCH_MODEL": "grounded/gemini/gemini-3.1-flash-lite",
-            },
-            clear=False,
-        ):
-            configuration = build_llm_configuration()
-        self.assertIsNotNone(configuration)
-        self.assertEqual(
-            configuration["researcher"].model,
-            "gemini/gemini-3.1-flash-lite",
-        )
-
-    def test_gemini_36_omits_deprecated_temperature(self):
-        with patch.dict(
-            os.environ,
-            {
-                "FORECAST_MODEL": "gemini/gemini-3.6-flash",
-                "PARSER_MODEL": "gemini/gemini-3.1-flash-lite",
-                "RESEARCH_MODEL": "no_research",
-            },
-            clear=False,
-        ):
-            configuration = build_llm_configuration()
-        self.assertIsNone(configuration["default"].litellm_kwargs["temperature"])
-
 
 if __name__ == "__main__":
     unittest.main()

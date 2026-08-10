@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Literal, Sequence
 
 import dotenv
@@ -13,6 +13,7 @@ from calibration import (
     clip_probability,
     constrain_numeric_values,
 )
+from question_selection import select_questions_for_run
 
 # Runtime helpers (env validation, banners, dependency-warning suppression).
 from bot_helpers import (
@@ -53,46 +54,6 @@ from forecasting_tools import (
 
 dotenv.load_dotenv()
 logger = logging.getLogger(__name__)
-
-
-def _latest_forecast_time(question: MetaculusQuestion) -> datetime | None:
-    forecasts = question.previous_forecasts or []
-    timestamps = [forecast.timestamp for forecast in forecasts if forecast.timestamp]
-    if not timestamps:
-        return None
-    latest = max(timestamps)
-    return latest if latest.tzinfo else latest.replace(tzinfo=timezone.utc)
-
-
-def select_questions_for_run(
-    questions: Sequence[MetaculusQuestion],
-    *,
-    skip_previously_forecasted: bool,
-    max_questions: int | None,
-    refresh_after_hours: float = 0,
-    now: datetime | None = None,
-) -> list[MetaculusQuestion]:
-    """Prioritize uncovered questions, then the stalest eligible forecasts."""
-    candidates = list(questions)
-    if not skip_previously_forecasted:
-        return candidates[:max_questions] if max_questions else candidates
-
-    new_questions = [q for q in candidates if not q.already_forecasted]
-    refresh_questions: list[tuple[datetime, MetaculusQuestion]] = []
-    if refresh_after_hours > 0:
-        cutoff = (now or datetime.now(timezone.utc)) - timedelta(
-            hours=refresh_after_hours
-        )
-        for question in candidates:
-            if not question.already_forecasted:
-                continue
-            latest = _latest_forecast_time(question)
-            if latest is not None and latest <= cutoff:
-                refresh_questions.append((latest, question))
-        refresh_questions.sort(key=lambda item: item[0])
-
-    selected = new_questions + [question for _, question in refresh_questions]
-    return selected[:max_questions] if max_questions else selected
 
 
 class FJMForecastBot2026(ForecastBot):
