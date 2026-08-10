@@ -13,6 +13,14 @@ on:
         required: true
         default: false
         type: boolean
+      mode:
+        description: Tournament target for a manual run
+        required: true
+        default: tournament
+        type: choice
+        options:
+          - tournament
+          - test_questions
   schedule:
     - cron: "7,27,47 * * * *" # every 20 min, offset off the hour. Make sure to skip already-forecasted questions!
 
@@ -68,7 +76,8 @@ jobs:
             export PREDICTIONS_PER_RESEARCH_REPORT="${NEXT_PREDICTIONS_PER_RESEARCH_REPORT}"
             export MAX_QUESTIONS_PER_RUN="${NEXT_MAX_QUESTIONS_PER_RUN}"
           fi
-          args=(--mode tournament)
+          run_mode="${MANUAL_MODE:-tournament}"
+          args=(--mode "${run_mode}")
           if [[ "${PUBLISH_FORECASTS}" == "true" ]]; then
             args+=(--publish)
           fi
@@ -99,3 +108,4 @@ jobs:
           NEXT_RESEARCH_MODEL: ${{ vars.NEXT_RESEARCH_MODEL }}
           NEXT_PREDICTIONS_PER_RESEARCH_REPORT: ${{ vars.NEXT_PREDICTIONS_PER_RESEARCH_REPORT }}
           NEXT_MAX_QUESTIONS_PER_RUN: ${{ vars.NEXT_MAX_QUESTIONS_PER_RUN }}
+          MANUAL_MODE: ${{ inputs.mode || 'tournament' }}
