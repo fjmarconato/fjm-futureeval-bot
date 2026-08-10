@@ -1,0 +1,46 @@
+name: Monitor next FutureEval competition
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "20 13 * * 1"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check seasonal rollover
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const rolloverAt = Date.parse("2026-09-07T12:00:00Z");
+            if (Date.now() < rolloverAt) {
+              core.info("Summer 2026 is still the configured live season.");
+              return;
+            }
+
+            const alertTitle = "[bot-monitor] Register next FutureEval season";
+            const issues = await github.paginate(
+              github.rest.issues.listForRepo,
+              { ...context.repo, state: "open", per_page: 100 },
+            );
+            const existing = issues.find(
+              (issue) => issue.title === alertTitle && !issue.pull_request,
+            );
+            if (!existing) {
+              await github.rest.issues.create({
+                ...context.repo,
+                title: alertTitle,
+                body: [
+                  "Summer 2026 closed on September 6.",
+                  "Verify the new FutureEval seasonal tournament, accept its rules, and update the SDK/configured tournament ID before claiming coverage.",
+                  "MiniBench continues through its dynamic `minibench` identifier.",
+                ].join("\n\n"),
+                assignees: [context.repo.owner],
+              });
+            }
