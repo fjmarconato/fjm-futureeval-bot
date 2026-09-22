@@ -76,11 +76,7 @@ def aggregate_binary_probabilities(
     probabilities: Sequence[float],
     minimum: float = DEFAULT_MIN_PROBABILITY,
 ) -> float:
-    """Pool forecasts in log-odds space with disagreement-aware calibration.
-
-    Independent agreement permits mild extremization. Strong disagreement
-    instead pulls the aggregate toward 50%, limiting one-model overconfidence.
-    """
+    """Pool forecasts by robust median log-odds and shrink disagreement."""
     if not probabilities:
         raise ValueError("at least one probability is required")
 
@@ -88,16 +84,7 @@ def aggregate_binary_probabilities(
     median_logit = statistics.median(logits)
     disagreement = _median_absolute_deviation(logits)
 
-    if len(logits) < 3:
-        calibration_factor = 1.0
-    elif disagreement <= 0.20:
-        calibration_factor = 1.12
-    elif disagreement <= 0.55:
-        calibration_factor = 1.05
-    elif disagreement <= 1.00:
-        calibration_factor = 1.0
-    else:
-        calibration_factor = 0.88
+    calibration_factor = 0.88 if len(logits) >= 3 and disagreement > 1.0 else 1.0
 
     return clip_probability(
         _sigmoid(median_logit * calibration_factor),
@@ -139,14 +126,9 @@ def aggregate_option_probabilities(
         for index in range(option_count)
     )
 
-    if len(normalized_rows) < 3:
-        calibration_factor = 1.0
-    elif row_disagreement <= 0.45:
-        calibration_factor = 1.08
-    elif row_disagreement <= 0.90:
-        calibration_factor = 1.0
-    else:
-        calibration_factor = 0.90
+    calibration_factor = (
+        0.90 if len(normalized_rows) >= 3 and row_disagreement > 0.90 else 1.0
+    )
 
     pooled = [math.exp(value * calibration_factor) for value in option_log_means]
     pooled_total = sum(pooled)

@@ -60,6 +60,22 @@ dotenv.load_dotenv()
 logger = logging.getLogger(__name__)
 
 
+def build_forecast_llm(model: str, *, allowed_tries: int) -> GeneralLlm:
+    """Build a provider-aware forecaster without unsupported temperature args."""
+    kwargs: dict[str, object] = {
+        "model": model,
+        "temperature": 0.2,
+        "timeout": 240,
+        "allowed_tries": allowed_tries,
+    }
+    if "gemini-3.6" in model:
+        kwargs["temperature"] = None
+    if "gpt-5.6" in model:
+        kwargs["temperature"] = None
+        kwargs["reasoning_effort"] = "high"
+    return GeneralLlm(**kwargs)
+
+
 class FJMForecastBot2026(ForecastBot):
     """
     Resolution-first forecasting bot for FJM's autonomous FutureEval entry.
@@ -141,6 +157,21 @@ class FJMForecastBot2026(ForecastBot):
     ) -> ReasonedPrediction[PredictionTypes]:
         async with self._prediction_limiter:
             try:
+                ensemble_models = [
+                    model.strip()
+                    for model in os.getenv("FORECAST_MODELS", "").split(",")
+                    if model.strip()
+                ]
+                if ensemble_models:
+                    model_index = getattr(self, "_forecast_model_index", 0)
+                    selected_model = ensemble_models[
+                        model_index % len(ensemble_models)
+                    ]
+                    self._forecast_model_index = model_index + 1
+                    self.set_llm(
+                        build_forecast_llm(selected_model, allowed_tries=1),
+                        purpose="default",
+                    )
                 try:
                     return await super()._make_prediction(question, research)
                 except Exception:
@@ -159,12 +190,7 @@ class FJMForecastBot2026(ForecastBot):
                         exc_info=True,
                     )
                     self.set_llm(
-                        GeneralLlm(
-                            model=fallback_model,
-                            temperature=0.2,
-                            timeout=180,
-                            allowed_tries=3,
-                        ),
+                        build_forecast_llm(fallback_model, allowed_tries=3),
                         purpose="default",
                     )
                     return await super()._make_prediction(question, research)
@@ -809,17 +835,7 @@ def build_llm_configuration() -> dict[str, str | GeneralLlm | None] | None:
 
     llms = FJMForecastBot2026._llm_config_defaults()
     if forecast_model:
-        forecast_temperature: float | None = float(
-            os.getenv("FORECAST_TEMPERATURE", "0.35")
-        )
-        if "gemini-3.6" in forecast_model:
-            forecast_temperature = None
-        llms["default"] = GeneralLlm(
-            model=forecast_model,
-            temperature=forecast_temperature,
-            timeout=180,
-            allowed_tries=1,
-        )
+        llms["default"] = build_forecast_llm(forecast_model, allowed_tries=1)
     if parser_model:
         llms["parser"] = GeneralLlm(
             model=parser_model,

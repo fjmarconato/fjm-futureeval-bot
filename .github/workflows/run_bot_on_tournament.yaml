@@ -108,6 +108,7 @@ jobs:
           ASKNEWS_CLIENT_ID: ${{ secrets.ASKNEWS_CLIENT_ID }}
           ASKNEWS_SECRET: ${{ secrets.ASKNEWS_SECRET }}
           FORECAST_MODEL: ${{ vars.FORECAST_MODEL }}
+          FORECAST_MODELS: ${{ vars.FORECAST_MODELS }}
           FALLBACK_FORECAST_MODEL: ${{ vars.FALLBACK_FORECAST_MODEL }}
           PARSER_MODEL: ${{ vars.PARSER_MODEL }}
           RESEARCH_MODEL: ${{ vars.RESEARCH_MODEL }}

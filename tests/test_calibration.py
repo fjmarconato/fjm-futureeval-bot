@@ -20,10 +20,9 @@ class CalibrationTests(unittest.TestCase):
         negative = aggregate_binary_probabilities([0.30, 0.28, 0.26])
         self.assertAlmostEqual(positive, 1.0 - negative)
 
-    def test_binary_consensus_is_mildly_extremized(self) -> None:
+    def test_binary_consensus_uses_robust_median(self) -> None:
         result = aggregate_binary_probabilities([0.69, 0.70, 0.71])
-        self.assertGreater(result, 0.70)
-        self.assertLess(result, 0.75)
+        self.assertAlmostEqual(result, 0.70)
 
     def test_binary_disagreement_does_not_create_extreme_output(self) -> None:
         result = aggregate_binary_probabilities([0.08, 0.50, 0.92])
@@ -39,7 +38,7 @@ class CalibrationTests(unittest.TestCase):
         )
         self.assertTrue(math.isclose(sum(result), 1.0))
         self.assertGreaterEqual(min(result), 0.005)
-        self.assertGreater(result[0], 0.70)
+        self.assertGreater(result[0], 0.68)
 
     def test_multiple_choice_rejects_mismatched_rows(self) -> None:
         with self.assertRaisesRegex(ValueError, "same length"):

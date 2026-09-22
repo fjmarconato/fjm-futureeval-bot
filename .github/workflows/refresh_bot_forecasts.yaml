@@ -60,6 +60,7 @@ jobs:
           FUTUREEVAL_TOURNAMENT_ID: fall-futureeval-2026
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           FORECAST_MODEL: ${{ vars.NEXT_FORECAST_MODEL }}
+          FORECAST_MODELS: ${{ vars.FORECAST_MODELS }}
           FALLBACK_FORECAST_MODEL: ${{ vars.FALLBACK_FORECAST_MODEL }}
           PARSER_MODEL: ${{ vars.PARSER_MODEL }}
           RESEARCH_MODEL: ${{ vars.NEXT_RESEARCH_MODEL }}

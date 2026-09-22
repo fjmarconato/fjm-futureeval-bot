@@ -70,6 +70,12 @@ a `gemini/gemini-3.1-flash-lite`; los errores de una pregunta no cancelan los
 resultados validos de las demas. Los creditos patrocinados permiten volver a
 un ensamble mayor despues de verificar la cuota concedida.
 
+La configuracion competitiva objetivo, una vez recibida y probada la clave
+patrocinada, es un ensamble de tres miembros: `openai/gpt-5.6-sol`,
+`gemini/gemini-3.6-flash` y `openai/gpt-5.6-terra`. Se activa con
+`FORECAST_MODELS` y `PREDICTIONS_PER_RESEARCH_REPORT=3`; no debe activarse sin
+una prueba remota exitosa de cada proveedor.
+
 El precio que muestra `forecasting-tools` es una estimacion de tarifa paga. La
 configuracion actual opera en el nivel gratuito de Gemini, donde texto de
 Gemini 3.5 Flash y Flash-Lite no tiene cargo; la busqueda web queda desactivada

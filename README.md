@@ -65,6 +65,11 @@ separately-quotaed model; the bot switches to it for the rest of a run after a
 primary-model error. Each question is isolated so a provider outage cannot
 discard successful reports from the same batch.
 
+When sponsored credits are available, set `FORECAST_MODELS` to a comma-separated
+heterogeneous ensemble. Predictions rotate serially across those models and are
+combined with robust, disagreement-aware aggregation. This keeps model errors
+less correlated than repeated samples from a single provider.
+
 ## Tests
 
 ```bash
