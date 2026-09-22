@@ -10,10 +10,10 @@ floors, dry-run defaults, tests, and scheduled GitHub Actions operation.
 - `main.py` researches, forecasts, aggregates, and optionally submits answers.
 - `calibration.py` contains deterministic binary and multiple-choice pooling.
 - `tests/` protects the scoring-critical calibration behavior.
-- `.github/workflows/run_bot_on_tournament.yaml` checks for new eligible
-  questions every 20 minutes.
+- `.github/workflows/run_bot_on_tournament.yaml` chains coverage runs roughly
+  every 10 minutes and uses a three-hour cron only as a recovery bootstrap.
 - `.github/workflows/test_bot.yaml` is the manual end-to-end smoke test.
-- `.github/workflows/monitor_bot_health.yaml` checks the scheduler every two
+- `.github/workflows/monitor_bot_health.yaml` checks the scheduler every 30
   hours and manages a GitHub issue when operation becomes unhealthy. A run is
   considered stale after six hours to tolerate GitHub Actions scheduling delay.
 - Questions and model calls run serially to stay below shared proxy rate limits.
@@ -53,6 +53,12 @@ Forecast the live FutureEval tournament and current MiniBench:
 ```bash
 poetry run python main.py --mode tournament --publish
 ```
+
+The competitive target defaults to `fall-futureeval-2026`. Override it only
+with `FUTUREEVAL_TOURNAMENT_ID`; known closed-season identifiers are rejected.
+Scheduled publishing is gated by the repository variable
+`COMPETITIVE_AUTOMATION_ENABLED=true`. Manual dry runs remain available while
+that gate is disabled.
 
 ## Tests
 

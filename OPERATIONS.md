@@ -13,11 +13,18 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
 - El workflow competitivo omite preguntas ya pronosticadas.
 - Las preguntas y predicciones se ejecutan en serie para evitar bloqueos por
   rafagas desde las direcciones compartidas de GitHub Actions.
-- Cada tanda competitiva procesa como maximo seis preguntas nuevas.
+- Cada tanda competitiva procesa como maximo cinco preguntas nuevas, igual al
+  maximo que Metaculus puede liberar en una tanda.
 - Desde la siguiente ronda, un ciclo diario refresca hasta tres pronosticos con
   al menos 72 horas de antiguedad, siempre despues de cubrir preguntas nuevas.
-- Un monitor cada dos horas abre una incidencia en GitHub si no hubo una
-  ejecucion exitosa en dos horas y la cierra cuando el bot se recupera.
+- Un monitor cada 30 minutos abre una incidencia en GitHub si no hubo una
+  ejecucion exitosa en 45 minutos y la cierra cuando el bot se recupera.
+- La cobertura normal se mantiene mediante dispatch encadenado cada ocho
+  minutos despues de una ejecucion correcta. El cron de tres horas es solo un
+  bootstrap de recuperacion porque GitHub puede demorar o descartar schedules.
+- Toda publicacion programada depende de la variable
+  `COMPETITIVE_AUTOMATION_ENABLED=true`; mantenerla en `false` durante el
+  preflight.
 - Metaculus Cup queda manual porque los bots no son elegibles para premios alli.
 - Cada ronda usa una version congelada del motor.
 - Los cambios de calibracion se realizan entre rondas cerradas, no sobre
@@ -46,11 +53,16 @@ secretos:
 - `RESEARCH_REPORTS_PER_QUESTION` (inicial: `1`)
 - `MAX_QUESTIONS_PER_RUN` (inicial: `3`)
 
-La configuracion preparada para la proxima ronda usa
+La configuracion objetivo para Otono 2026 usa
 `gemini/gemini-3.6-flash` para pronosticar,
 `gemini/gemini-3.1-flash-lite` para parsear y
-`no_research` hasta que la cuenta tenga una cuota de busqueda habilitada. La
+un proveedor de investigacion patrocinado cuando la cuota quede verificada. La
 clave de Google se guarda como secreto, no como variable del repositorio.
+
+El torneo competitivo debe usar el slug `fall-futureeval-2026` (proyecto
+`33121`). El codigo rechaza explicitamente los identificadores de Verano 2026.
+No se activa una temporada con `no_research`: esa configuracion queda limitada
+a pruebas tecnicas mientras se renuevan AskNews o los creditos patrocinados.
 
 El precio que muestra `forecasting-tools` es una estimacion de tarifa paga. La
 configuracion actual opera en el nivel gratuito de Gemini, donde texto de

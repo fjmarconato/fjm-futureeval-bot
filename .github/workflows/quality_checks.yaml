@@ -20,6 +20,6 @@ jobs:
         with:
           python-version: "3.11"
       - name: Compile source
-        run: python -m py_compile main.py calibration.py tests/test_calibration.py
+        run: python -m py_compile main.py calibration.py competition_config.py question_selection.py tests/test_calibration.py tests/test_competition_config.py tests/test_question_selection.py
       - name: Run calibration tests
         run: python -m unittest discover -s tests -v

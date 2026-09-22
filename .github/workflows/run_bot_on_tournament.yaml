@@ -21,10 +21,16 @@ on:
         options:
           - tournament
           - test_questions
+      chain:
+        description: Keep the reliable coverage loop running after this job
+        required: true
+        default: false
+        type: boolean
   schedule:
-    - cron: "7,27,47 * * * *" # every 20 min, offset off the hour. Make sure to skip already-forecasted questions!
+    - cron: "11 */3 * * *" # backup bootstrap; chained dispatches provide normal coverage
 
 permissions:
+  actions: write
   contents: read
 
 # Add concurrency group to prevent parallel runs
@@ -36,6 +42,7 @@ concurrency:
 # Daily job to run the simple forecast bot
 jobs:
   forecast_job:
+    if: (github.event_name == 'workflow_dispatch' && !inputs.chain) || vars.COMPETITIVE_AUTOMATION_ENABLED == 'true'
     runs-on: ubuntu-latest # determines the machine that will run the job - keep as is
     timeout-minutes: 45
     steps: # sets up the steps that will be run in order
@@ -86,6 +93,7 @@ jobs:
         # Store under Settings --> Secrets and variables --> Actions
         env:
           METACULUS_TOKEN: ${{ secrets.METACULUS_TOKEN }} # replace this with the name of the variable under which you stored your own Metaculus token
+          FUTUREEVAL_TOURNAMENT_ID: fall-futureeval-2026
           PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
           EXA_API_KEY: ${{ secrets.EXA_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -99,7 +107,7 @@ jobs:
           RESEARCH_MODEL: ${{ vars.RESEARCH_MODEL }}
           PREDICTIONS_PER_RESEARCH_REPORT: ${{ vars.PREDICTIONS_PER_RESEARCH_REPORT }}
           RESEARCH_REPORTS_PER_QUESTION: ${{ vars.RESEARCH_REPORTS_PER_QUESTION }}
-          MAX_QUESTIONS_PER_RUN: ${{ vars.MAX_QUESTIONS_PER_RUN }}
+          MAX_QUESTIONS_PER_RUN: ${{ vars.MAX_QUESTIONS_PER_RUN || '5' }}
           LLM_REQUEST_COOLDOWN_SECONDS: 2
           PUBLISH_FORECASTS: ${{ github.event_name == 'schedule' || inputs.publish }}
           USE_NEXT_CONFIG: ${{ inputs.use_next_config || false }}
@@ -107,5 +115,34 @@ jobs:
           NEXT_FORECAST_MODEL: ${{ vars.NEXT_FORECAST_MODEL }}
           NEXT_RESEARCH_MODEL: ${{ vars.NEXT_RESEARCH_MODEL }}
           NEXT_PREDICTIONS_PER_RESEARCH_REPORT: ${{ vars.NEXT_PREDICTIONS_PER_RESEARCH_REPORT }}
-          NEXT_MAX_QUESTIONS_PER_RUN: ${{ vars.NEXT_MAX_QUESTIONS_PER_RUN }}
+          NEXT_MAX_QUESTIONS_PER_RUN: ${{ vars.NEXT_MAX_QUESTIONS_PER_RUN || '5' }}
           MANUAL_MODE: ${{ inputs.mode || 'tournament' }}
+      - name: Dispatch the next coverage cycle
+        if: always() && (github.event_name == 'schedule' || inputs.chain)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          delay_seconds=480
+          if [[ "${{ job.status }}" != "success" ]]; then
+            delay_seconds=1200
+          fi
+          sleep "${delay_seconds}"
+
+          active_runs="$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/run_bot_on_tournament.yaml/runs?per_page=20" \
+            --jq '.workflow_runs[] | select(.status == "queued" or .status == "in_progress") | .id' \
+            | awk -v current="${GITHUB_RUN_ID}" '$0 != current { count++ } END { print count + 0 }')"
+          if [[ "${active_runs}" != "0" ]]; then
+            echo "A queued or running coverage cycle already exists; not dispatching another."
+            exit 0
+          fi
+
+          gh workflow run run_bot_on_tournament.yaml \
+            --ref main \
+            -f publish=true \
+            -f use_next_config=false \
+            -f mode=tournament \
+            -f chain=true
+        env:
+          GH_TOKEN: ${{ github.token }}

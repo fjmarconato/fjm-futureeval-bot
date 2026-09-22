@@ -13,6 +13,10 @@ from calibration import (
     clip_probability,
     constrain_numeric_values,
 )
+from competition_config import (
+    DEFAULT_FUTUREEVAL_TOURNAMENT_URL,
+    configured_futureeval_tournament_id,
+)
 from question_selection import select_questions_for_run
 
 # Runtime helpers (env validation, banners, dependency-warning suppression).
@@ -866,7 +870,7 @@ if __name__ == "__main__":
     # piggyback on the forecasting_tools SDK constants and need updating
     # whenever those rotate seasons.
     TOURNAMENT_URLS = {
-        "tournament": "https://www.metaculus.com/tournament/summer-futureeval-2026/",
+        "tournament": DEFAULT_FUTUREEVAL_TOURNAMENT_URL,
         "metaculus_cup": "https://www.metaculus.com/tournament/metaculus-cup-summer-2026/",
         "test_questions": "https://www.metaculus.com/tournament/bot-testing-area/",
     }
@@ -876,11 +880,13 @@ if __name__ == "__main__":
     # summary printers below.
     client = MetaculusClient()
     if run_mode == "tournament":
+        futureeval_tournament_id = configured_futureeval_tournament_id()
+
         async def forecast_live_tournaments() -> list[
             ForecastReport | BaseException
         ]:
             seasonal_reports = await bot.forecast_on_tournament(
-                client.CURRENT_AI_COMPETITION_ID, return_exceptions=True
+                futureeval_tournament_id, return_exceptions=True
             )
             minibench_reports = await bot.forecast_on_tournament(
                 client.CURRENT_MINIBENCH_ID, return_exceptions=True

@@ -3,7 +3,7 @@ name: Monitor bot health
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17 */2 * * *"
+    - cron: "17,47 * * * *"
 
 permissions:
   actions: read
@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   monitor:
+    if: vars.COMPETITIVE_AUTOMATION_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -33,10 +34,8 @@ jobs:
             const latestCompleted = runsResponse.data.workflow_runs.find(
               (run) => run.status === "completed",
             );
-            // Scheduled Actions can be delayed for several hours under load.
-            // Six hours catches a real outage without alerting on normal jitter.
-            const staleAfterHours = 6;
-            const staleAfterMs = staleAfterHours * 60 * 60 * 1000;
+            const staleAfterMinutes = 45;
+            const staleAfterMs = staleAfterMinutes * 60 * 1000;
             const isStale =
               !latestCompleted ||
               Date.now() - Date.parse(latestCompleted.created_at) > staleAfterMs;
@@ -61,7 +60,7 @@ jobs:
                 owner,
                 repo,
                 title: alertTitle,
-                body: `${runDetails}\n\nThe monitor expects a successful run within the last ${staleAfterHours} hours.`,
+                body: `${runDetails}\n\nThe monitor expects a successful run within the last ${staleAfterMinutes} minutes.`,
                 assignees: [owner],
               });
             }
