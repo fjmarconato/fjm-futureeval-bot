@@ -60,6 +60,11 @@ Scheduled publishing is gated by the repository variable
 `COMPETITIVE_AUTOMATION_ENABLED=true`. Manual dry runs remain available while
 that gate is disabled.
 
+The primary forecaster is Gemini 3.6 Flash. Set `FALLBACK_FORECAST_MODEL` to a
+separately-quotaed model; the bot switches to it for the rest of a run after a
+primary-model error. Each question is isolated so a provider outage cannot
+discard successful reports from the same batch.
+
 ## Tests
 
 ```bash

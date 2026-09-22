@@ -64,6 +64,12 @@ El torneo competitivo debe usar el slug `fall-futureeval-2026` (proyecto
 No se activa una temporada con `no_research`: esa configuracion queda limitada
 a pruebas tecnicas mientras se renuevan AskNews o los creditos patrocinados.
 
+Mientras la cuota de 3.6 siga en el nivel gratuito, cada pregunta usa una sola
+estimacion. Ante un 429, 503 u otro error del modelo principal, la tanda cambia
+a `gemini/gemini-3.1-flash-lite`; los errores de una pregunta no cancelan los
+resultados validos de las demas. Los creditos patrocinados permiten volver a
+un ensamble mayor despues de verificar la cuota concedida.
+
 El precio que muestra `forecasting-tools` es una estimacion de tarifa paga. La
 configuracion actual opera en el nivel gratuito de Gemini, donde texto de
 Gemini 3.5 Flash y Flash-Lite no tiene cargo; la busqueda web queda desactivada

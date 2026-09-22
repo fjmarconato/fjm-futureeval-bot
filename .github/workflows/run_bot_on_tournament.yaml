@@ -26,6 +26,11 @@ on:
         required: true
         default: false
         type: boolean
+      max_questions:
+        description: Maximum questions for this manual run
+        required: true
+        default: 5
+        type: number
   schedule:
     - cron: "11 */3 * * *" # backup bootstrap; chained dispatches provide normal coverage
 
@@ -103,11 +108,12 @@ jobs:
           ASKNEWS_CLIENT_ID: ${{ secrets.ASKNEWS_CLIENT_ID }}
           ASKNEWS_SECRET: ${{ secrets.ASKNEWS_SECRET }}
           FORECAST_MODEL: ${{ vars.FORECAST_MODEL }}
+          FALLBACK_FORECAST_MODEL: ${{ vars.FALLBACK_FORECAST_MODEL }}
           PARSER_MODEL: ${{ vars.PARSER_MODEL }}
           RESEARCH_MODEL: ${{ vars.RESEARCH_MODEL }}
           PREDICTIONS_PER_RESEARCH_REPORT: ${{ vars.PREDICTIONS_PER_RESEARCH_REPORT }}
           RESEARCH_REPORTS_PER_QUESTION: ${{ vars.RESEARCH_REPORTS_PER_QUESTION }}
-          MAX_QUESTIONS_PER_RUN: ${{ vars.MAX_QUESTIONS_PER_RUN || '5' }}
+          MAX_QUESTIONS_PER_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.max_questions) || vars.MAX_QUESTIONS_PER_RUN || '5' }}
           LLM_REQUEST_COOLDOWN_SECONDS: 2
           PUBLISH_FORECASTS: ${{ github.event_name == 'schedule' || inputs.publish }}
           USE_NEXT_CONFIG: ${{ inputs.use_next_config || false }}
@@ -143,6 +149,7 @@ jobs:
             -f publish=true \
             -f use_next_config=false \
             -f mode=tournament \
-            -f chain=true
+            -f chain=true \
+            -f max_questions=5
         env:
           GH_TOKEN: ${{ github.token }}

@@ -119,10 +119,19 @@ class FJMForecastBot2026(ForecastBot):
         self.skip_previously_forecasted_questions = False
         try:
             for question in questions_to_run:
-                single_report = await super().forecast_questions(
-                    [question], return_exceptions=return_exceptions
-                )
-                reports.extend(single_report)
+                try:
+                    single_report = await super().forecast_questions(
+                        [question], return_exceptions=return_exceptions
+                    )
+                    reports.extend(single_report)
+                except Exception as error:
+                    if not return_exceptions:
+                        raise
+                    logger.exception(
+                        "Question %s failed; preserving partial run results",
+                        getattr(question, "page_url", "unknown"),
+                    )
+                    reports.append(error)
         finally:
             self.skip_previously_forecasted_questions = original_skip_setting
         return reports
@@ -132,7 +141,33 @@ class FJMForecastBot2026(ForecastBot):
     ) -> ReasonedPrediction[PredictionTypes]:
         async with self._prediction_limiter:
             try:
-                return await super()._make_prediction(question, research)
+                try:
+                    return await super()._make_prediction(question, research)
+                except Exception:
+                    fallback_model = os.getenv(
+                        "FALLBACK_FORECAST_MODEL", ""
+                    ).strip()
+                    current_model = self.get_llm(
+                        "default", guarantee_type="string_name"
+                    )
+                    if not fallback_model or fallback_model == current_model:
+                        raise
+                    logger.warning(
+                        "Forecast model %s failed; switching this run to %s",
+                        current_model,
+                        fallback_model,
+                        exc_info=True,
+                    )
+                    self.set_llm(
+                        GeneralLlm(
+                            model=fallback_model,
+                            temperature=0.2,
+                            timeout=180,
+                            allowed_tries=3,
+                        ),
+                        purpose="default",
+                    )
+                    return await super()._make_prediction(question, research)
             finally:
                 cooldown = float(
                     os.getenv("LLM_REQUEST_COOLDOWN_SECONDS", "1.5")
@@ -783,7 +818,7 @@ def build_llm_configuration() -> dict[str, str | GeneralLlm | None] | None:
             model=forecast_model,
             temperature=forecast_temperature,
             timeout=180,
-            allowed_tries=3,
+            allowed_tries=1,
         )
     if parser_model:
         llms["parser"] = GeneralLlm(
