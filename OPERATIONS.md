@@ -34,7 +34,9 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
   modelo aporta al forecast de cada pregunta.
 - Con `RESEARCH_MODEL=smart-searcher/gemini/gemini-3.5-flash-lite`, el
   investigador usa Exa para una busqueda y cinco fuentes por pregunta. Si el
-  informe falla o queda vacio, intenta `FALLBACK_RESEARCH_MODEL` una vez.
+  informe falla o queda vacio, intenta `FALLBACK_RESEARCH_MODEL` una vez. Si
+  ambos informes fallan, consulta Exa directamente con el texto de la pregunta
+  y entrega fragmentos fechados y enlazados, sin inventar una sintesis.
   Requiere `EXA_API_KEY` como secreto; sin ella, la publicacion competitiva
   falla antes de llamar a Metaculus. El plan gratuito de Exa corta las
   solicitudes cuando se agota el credito mensual.
@@ -150,6 +152,12 @@ comparacion de puntaje entre modelos. La
 encontro cero preguntas elegibles tanto en FutureEval como en MiniBench. El
 workflow de calidad #30 paso con el cambio de respaldo de investigacion. No
 se publico ningun pronostico ni se habilito la automatizacion competitiva.
+
+La [prueba seca #1087](https://github.com/fjmarconato/fjm-futureeval-bot/actions/runs/36499550637)
+fallo antes de pronosticar: el primer investigador devolvio una consulta mal
+formada y el segundo, un informe sin fuentes utiles. Por eso se agrego la
+busqueda directa de Exa como tercer nivel. La prueba local de esa ruta usa
+fuentes simuladas; falta confirmar la ruta con Exa real en GitHub Actions.
 
 El 27 de septiembre se corrigio el workflow de calidad y paso su ejecucion
 remota #23. La automatizacion competitiva permanece deshabilitada; no hay
