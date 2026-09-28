@@ -93,8 +93,11 @@ patrocinada, es un ensamble de tres miembros: `openai/gpt-5.6-sol`,
 `FORECAST_MODELS` y `PREDICTIONS_PER_RESEARCH_REPORT=3`; no debe activarse sin
 una prueba remota exitosa de cada proveedor.
 
-Metaculus rechazo la solicitud de creditos LLM para Otono 2026. El ensamble
-patrocinado anterior queda pospuesto; los premios siguen disponibles. El 27 de
+Metaculus rechazo la solicitud de creditos LLM para Otono 2026. Un correo del
+27 de septiembre de `ben@metaculus.com`, enviado y firmado por `metaculus.com`,
+confirmo que el bot aun puede optar a premios. Esto confirma elegibilidad
+potencial, no inscripcion efectiva en un leaderboard, puntaje ni cobro. El
+ensamble patrocinado anterior queda pospuesto. El 27 de
 septiembre se agrego `EXA_API_KEY` como secreto de GitHub en el plan gratuito
 de Exa, sin medio de pago, con USD 20 de saldo inicial y USD 10 mensuales. Tres
 ejecuciones secas (dos sobre FutureEval) confirmaron investigacion con Exa y
