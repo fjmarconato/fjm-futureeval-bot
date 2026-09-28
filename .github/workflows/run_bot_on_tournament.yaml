@@ -36,6 +36,16 @@ on:
         required: false
         default: ""
         type: string
+      forecast_model_override:
+        description: Forecast model for this manual run only (empty uses repository configuration)
+        required: false
+        default: ""
+        type: string
+      parser_model_override:
+        description: Parser model for this manual run only (empty uses repository configuration)
+        required: false
+        default: ""
+        type: string
   schedule:
     - cron: "11 */3 * * *" # backup bootstrap; chained dispatches provide normal coverage
 
@@ -101,6 +111,12 @@ jobs:
             if [[ -n "${MANUAL_RESEARCH_MODEL_OVERRIDE}" ]]; then
               export RESEARCH_MODEL="${MANUAL_RESEARCH_MODEL_OVERRIDE}"
             fi
+            if [[ -n "${MANUAL_FORECAST_MODEL_OVERRIDE}" ]]; then
+              export FORECAST_MODEL="${MANUAL_FORECAST_MODEL_OVERRIDE}"
+            fi
+            if [[ -n "${MANUAL_PARSER_MODEL_OVERRIDE}" ]]; then
+              export PARSER_MODEL="${MANUAL_PARSER_MODEL_OVERRIDE}"
+            fi
           fi
           if ! [[ "${MAX_QUESTIONS_PER_RUN}" =~ ^[1-5]$ ]]; then
             echo "::error::MAX_QUESTIONS_PER_RUN must be between 1 and 5"
@@ -145,6 +161,8 @@ jobs:
           RESEARCH_REPORTS_PER_QUESTION: ${{ vars.RESEARCH_REPORTS_PER_QUESTION }}
           MANUAL_MAX_QUESTIONS: ${{ inputs.max_questions }}
           MANUAL_RESEARCH_MODEL_OVERRIDE: ${{ inputs.research_model_override }}
+          MANUAL_FORECAST_MODEL_OVERRIDE: ${{ inputs.forecast_model_override }}
+          MANUAL_PARSER_MODEL_OVERRIDE: ${{ inputs.parser_model_override }}
           REPO_MAX_QUESTIONS: ${{ vars.MAX_QUESTIONS_PER_RUN || '5' }}
           LLM_REQUEST_COOLDOWN_SECONDS: 2
           PUBLISH_FORECASTS: ${{ github.event_name == 'schedule' || inputs.publish }}
