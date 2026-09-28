@@ -41,7 +41,9 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
   y modelos efectivos en el resumen de GitHub Actions; no registra secretos.
 - En una ejecucion manual, `use_next_config` decide si se aplica esa
   configuracion y `max_questions` prevalece siempre. La fecha de activacion
-  afecta solo a las ejecuciones programadas. El limite permitido es 1 a 5.
+  afecta solo a las ejecuciones programadas. Los overrides de investigacion,
+  pronostico y parser afectan solo a esa ejecucion manual. El limite permitido
+  es 1 a 5.
 - Metaculus Cup queda manual porque los bots no son elegibles para premios alli.
 - Cada ronda usa una version congelada del motor.
 - Los cambios de calibracion se realizan entre rondas cerradas, no sobre
@@ -106,12 +108,34 @@ con Gemini 3.6 para investigacion fallo por un 503 transitorio antes de llamar
 a Exa. El precio que muestra `forecasting-tools` es una estimacion de tarifa
 paga, no una factura verificada.
 
-La clave `GOOGLE_API_KEY` de GitHub esta cifrada; aun no se comprobo a cual
-de los proyectos de Google AI Studio corresponde. Hay proyectos gratuitos y
-uno de pospago en la cuenta. No afirmar costo cero ni activar la publicacion
-automatica antes de verificar esa asociacion o sustituir la clave por una del
-proyecto gratuito con autorizacion especifica. No contratar un plan pago ni
-consumir saldo propio por agotamiento del cupo gratuito sin decision expresa.
+El 28 de septiembre se comparo la huella SHA-256 de `GOOGLE_API_KEY` en
+GitHub con las claves de Google AI Studio sin revelar sus valores. La
+[verificacion #2](https://github.com/fjmarconato/fjm-futureeval-bot/actions/runs/36464446973)
+confirmo que el secreto existente corresponde a `fede`, del proyecto
+`My First Project`, que AI Studio muestra en nivel gratuito. No corresponde
+a la clave del otro proyecto gratuito `Gemini API` ([verificacion #1](https://github.com/fjmarconato/fjm-futureeval-bot/actions/runs/36464274787)).
+No se reemplazo el secreto ni se toco el proyecto de pospago. La cuota
+gratuita puede agotarse o devolver errores; no contratar un plan pago ni
+consumir saldo propio sin decision expresa.
+
+La [prueba seca #1077](https://github.com/fjmarconato/fjm-futureeval-bot/actions/runs/36464575061)
+del 28 de septiembre encontro cero preguntas elegibles en FutureEval y
+MiniBench, por lo que no valido el recorrido completo. La
+[prueba seca #1078](https://github.com/fjmarconato/fjm-futureeval-bot/actions/runs/36464819027)
+en `bot-testing-area` encontro una pregunta y fuentes de Exa, pero fallo por
+un `503` transitorio de Gemini 3.1 Flash-Lite al generar el informe de
+investigacion. Ninguna prueba publico pronosticos.
+
+La [prueba seca #1079](https://github.com/fjmarconato/fjm-futureeval-bot/actions/runs/36465708863)
+completo el recorrido en `bot-testing-area` con investigacion Exa,
+`gemini/gemini-3.5-flash-lite` para investigacion, pronostico y parser, y
+`max_questions=1`. Produjo un pronostico numerico para una pregunta, sin
+errores y con `publish=false`; no lo publico. Es una validacion tecnica, no
+una medicion de rendimiento competitivo. El costo de USD 0.02227 por
+pregunta indicado en el log es una estimacion de tarifa paga del paquete,
+no un cargo verificado. La configuracion programada no cambio con estos
+overrides manuales; FutureEval y MiniBench tenian cero preguntas elegibles
+en la prueba #1077.
 
 El 27 de septiembre se corrigio el workflow de calidad y paso su ejecucion
 remota #23. La automatizacion competitiva permanece deshabilitada; no hay
