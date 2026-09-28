@@ -25,6 +25,23 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
 - Toda publicacion programada depende de la variable
   `COMPETITIVE_AUTOMATION_ENABLED=true`; mantenerla en `false` durante el
   preflight.
+- La publicacion manual o programada en `tournament` se rechaza antes de
+  consultar Metaculus si `RESEARCH_MODEL` esta vacio o configurado como
+  `no_research`/`None`. Primero probar un proveedor de investigacion con una
+  ejecucion seca.
+- Si `FORECAST_MODELS` declara varios modelos, la publicacion tambien exige al
+  menos tantas predicciones por informe como modelos distintos; asi cada
+  modelo aporta al forecast de cada pregunta.
+- Con `RESEARCH_MODEL=smart-searcher/gemini/gemini-3.6-flash`, el investigador
+  usa Exa para una busqueda y cinco fuentes por pregunta. Requiere
+  `EXA_API_KEY` como secreto; sin ella, la publicacion competitiva falla antes
+  de llamar a Metaculus. El plan gratuito de Exa corta las solicitudes cuando
+  se agota el credito mensual.
+- Cada ejecucion del workflow registra modo, publicacion, limite de preguntas
+  y modelos efectivos en el resumen de GitHub Actions; no registra secretos.
+- En una ejecucion manual, `use_next_config` decide si se aplica esa
+  configuracion y `max_questions` prevalece siempre. La fecha de activacion
+  afecta solo a las ejecuciones programadas. El limite permitido es 1 a 5.
 - Metaculus Cup queda manual porque los bots no son elegibles para premios alli.
 - Cada ronda usa una version congelada del motor.
 - Los cambios de calibracion se realizan entre rondas cerradas, no sobre
@@ -75,6 +92,13 @@ patrocinada, es un ensamble de tres miembros: `openai/gpt-5.6-sol`,
 `gemini/gemini-3.6-flash` y `openai/gpt-5.6-terra`. Se activa con
 `FORECAST_MODELS` y `PREDICTIONS_PER_RESEARCH_REPORT=3`; no debe activarse sin
 una prueba remota exitosa de cada proveedor.
+
+Metaculus rechazo la solicitud de creditos LLM para Otono 2026. El ensamble
+patrocinado anterior queda pospuesto; los premios siguen disponibles. La ruta
+sin gasto propio pendiente de validacion es `smart-searcher/gemini/gemini-3.6-flash`
+con el plan gratuito de Exa. No activar la publicacion hasta verificar la
+clave, la cuota y una corrida remota sin publicar. No contratar un plan pago
+por agotamiento del cupo gratuito sin una decision expresa.
 
 El precio que muestra `forecasting-tools` es una estimacion de tarifa paga. La
 configuracion actual opera en el nivel gratuito de Gemini, donde texto de

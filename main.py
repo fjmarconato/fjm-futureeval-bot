@@ -16,6 +16,8 @@ from calibration import (
 from competition_config import (
     DEFAULT_FUTUREEVAL_TOURNAMENT_URL,
     configured_futureeval_tournament_id,
+    validate_live_ensemble_configuration,
+    validate_live_research_configuration,
 )
 from question_selection import select_questions_for_run
 
@@ -74,6 +76,16 @@ def build_forecast_llm(model: str, *, allowed_tries: int) -> GeneralLlm:
         kwargs["temperature"] = None
         kwargs["reasoning_effort"] = "high"
     return GeneralLlm(**kwargs)
+
+
+def build_research_searcher(model_name: str) -> SmartSearcher:
+    """Use a small, source-backed research pass within the free Exa allowance."""
+    return SmartSearcher(
+        model=build_forecast_llm(model_name, allowed_tries=1),
+        num_searches_to_run=1,
+        num_sites_per_search=5,
+        use_advanced_filters=False,
+    )
 
 
 class FJMForecastBot2026(ForecastBot):
@@ -302,15 +314,9 @@ class FJMForecastBot2026(ForecastBot):
                 research = await AskNewsSearcher().call_preconfigured_version(
                     researcher, prompt
                 )
-            elif researcher.startswith("smart-searcher"):
+            elif researcher.startswith("smart-searcher/"):
                 model_name = researcher.removeprefix("smart-searcher/")
-                searcher = SmartSearcher(
-                    model=model_name,
-                    temperature=0,
-                    num_searches_to_run=2,
-                    num_sites_per_search=10,
-                    use_advanced_filters=False,
-                )
+                searcher = build_research_searcher(model_name)
                 research = await searcher.invoke(prompt)
             elif not researcher or researcher == "None" or researcher == "no_research":
                 research = ""
@@ -892,6 +898,25 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     run_mode: Literal["tournament", "metaculus_cup", "test_questions"] = args.mode
+    predictions_per_research_report = positive_int_from_env(
+        "PREDICTIONS_PER_RESEARCH_REPORT", 5
+    )
+
+    try:
+        validate_live_research_configuration(
+            run_mode=run_mode,
+            will_publish=args.publish,
+            research_model=os.getenv("RESEARCH_MODEL", ""),
+            has_exa_key=bool(os.getenv("EXA_API_KEY", "").strip()),
+        )
+        validate_live_ensemble_configuration(
+            run_mode=run_mode,
+            will_publish=args.publish,
+            forecast_models=os.getenv("FORECAST_MODELS", ""),
+            predictions_per_research_report=predictions_per_research_report,
+        )
+    except ValueError as error:
+        parser.error(str(error))
 
     check_environment(strict=True)
     publish_to_metaculus = args.publish
@@ -904,9 +929,7 @@ if __name__ == "__main__":
         research_reports_per_question=positive_int_from_env(
             "RESEARCH_REPORTS_PER_QUESTION", 1
         ),
-        predictions_per_research_report=positive_int_from_env(
-            "PREDICTIONS_PER_RESEARCH_REPORT", 5
-        ),
+        predictions_per_research_report=predictions_per_research_report,
         use_research_summary_to_forecast=False,
         publish_reports_to_metaculus=publish_to_metaculus,
         folder_to_save_reports_to=os.getenv("REPORTS_DIRECTORY") or None,

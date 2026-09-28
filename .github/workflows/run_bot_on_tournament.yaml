@@ -72,9 +72,12 @@ jobs:
         run: poetry install --no-interaction --no-root
       - name: Run bot
         run: |
+          export MAX_QUESTIONS_PER_RUN="${REPO_MAX_QUESTIONS}"
           activate_next=false
-          if [[ "${USE_NEXT_CONFIG}" == "true" ]]; then
-            activate_next=true
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            if [[ "${USE_NEXT_CONFIG}" == "true" ]]; then
+              activate_next=true
+            fi
           elif [[ -n "${NEXT_CONFIG_ACTIVATION_UTC}" && "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "${NEXT_CONFIG_ACTIVATION_UTC}" ]]; then
             activate_next=true
           fi
@@ -88,7 +91,25 @@ jobs:
             export PREDICTIONS_PER_RESEARCH_REPORT="${NEXT_PREDICTIONS_PER_RESEARCH_REPORT}"
             export MAX_QUESTIONS_PER_RUN="${NEXT_MAX_QUESTIONS_PER_RUN}"
           fi
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            export MAX_QUESTIONS_PER_RUN="${MANUAL_MAX_QUESTIONS}"
+          fi
+          if ! [[ "${MAX_QUESTIONS_PER_RUN}" =~ ^[1-5]$ ]]; then
+            echo "::error::MAX_QUESTIONS_PER_RUN must be between 1 and 5"
+            exit 2
+          fi
           run_mode="${MANUAL_MODE:-tournament}"
+          {
+            echo "## Effective forecast configuration"
+            echo "- Mode: \`${run_mode}\`"
+            echo "- Publishing: \`${PUBLISH_FORECASTS}\`"
+            echo "- Next-round config: \`${activate_next}\`"
+            echo "- Max questions: \`${MAX_QUESTIONS_PER_RUN}\`"
+            echo "- Forecast model(s): \`${FORECAST_MODELS:-${FORECAST_MODEL:-provider default}}\`"
+            echo "- Research model: \`${RESEARCH_MODEL:-provider default}\`"
+            echo "- Parser model: \`${PARSER_MODEL:-provider default}\`"
+            echo "- Predictions per research report: \`${PREDICTIONS_PER_RESEARCH_REPORT:-provider default}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
           args=(--mode "${run_mode}")
           if [[ "${PUBLISH_FORECASTS}" == "true" ]]; then
             args+=(--publish)
@@ -114,7 +135,8 @@ jobs:
           RESEARCH_MODEL: ${{ vars.RESEARCH_MODEL }}
           PREDICTIONS_PER_RESEARCH_REPORT: ${{ vars.PREDICTIONS_PER_RESEARCH_REPORT }}
           RESEARCH_REPORTS_PER_QUESTION: ${{ vars.RESEARCH_REPORTS_PER_QUESTION }}
-          MAX_QUESTIONS_PER_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.max_questions) || vars.MAX_QUESTIONS_PER_RUN || '5' }}
+          MANUAL_MAX_QUESTIONS: ${{ inputs.max_questions }}
+          REPO_MAX_QUESTIONS: ${{ vars.MAX_QUESTIONS_PER_RUN || '5' }}
           LLM_REQUEST_COOLDOWN_SECONDS: 2
           PUBLISH_FORECASTS: ${{ github.event_name == 'schedule' || inputs.publish }}
           USE_NEXT_CONFIG: ${{ inputs.use_next_config || false }}
