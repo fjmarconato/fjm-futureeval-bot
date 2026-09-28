@@ -95,6 +95,34 @@ def validate_smart_search_report(research: str) -> None:
         raise RuntimeError("SmartSearcher returned no usable research")
 
 
+def format_question_metadata(question: MetaculusQuestion) -> str:
+    """Supply the model with observable question data already returned by Metaculus."""
+    lines = [
+        f"Question URL: {question.page_url}",
+        f"Metadata observed at: {question.date_accessed}",
+        f"Opened: {question.open_time or 'unavailable'}",
+        f"Scheduled close: {question.close_time or 'unavailable'}",
+        f"Current forecasters: {question.num_forecasters if question.num_forecasters is not None else 'unavailable'}",
+    ]
+    criteria = (question.resolution_criteria or "").lower()
+    if (
+        "number of forecasters listed" in criteria
+        and "divided by the number of days" in criteria
+        and question.num_forecasters is not None
+        and question.open_time is not None
+        and question.close_time is not None
+    ):
+        total_days = (question.close_time - question.open_time).total_seconds() / 86400
+        if total_days > 0:
+            floor = question.num_forecasters / total_days
+            lines.append(
+                f"Observed final-rate floor: {floor:.2f} forecasters/day if the "
+                "current unique-forecaster count does not decrease and the "
+                "scheduled close holds. Account for the question's numeric bounds."
+            )
+    return "\n".join(lines)
+
+
 class FJMForecastBot2026(ForecastBot):
     """
     Resolution-first forecasting bot for FJM's autonomous FutureEval entry.
@@ -288,6 +316,9 @@ class FJMForecastBot2026(ForecastBot):
                 Question:
                 {question.question_text}
 
+                Metaculus question metadata:
+                {format_question_metadata(question)}
+
                 This question's outcome will be determined by the specific criteria below:
                 {question.resolution_criteria}
 
@@ -351,6 +382,9 @@ class FJMForecastBot2026(ForecastBot):
 
             Your interview question is:
             {question.question_text}
+
+            Metaculus question metadata:
+            {format_question_metadata(question)}
 
             Question background:
             {question.background_info}
