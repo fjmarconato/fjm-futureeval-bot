@@ -159,6 +159,13 @@ formada y el segundo, un informe sin fuentes utiles. Por eso se agrego la
 busqueda directa de Exa como tercer nivel. La prueba local de esa ruta usa
 fuentes simuladas; falta confirmar la ruta con Exa real en GitHub Actions.
 
+La [prueba seca #1088](https://github.com/fjmarconato/fjm-futureeval-bot/actions/runs/36499975561)
+completo una pregunta del area de test con `publish=false`: hubo investigacion
+valida, Gemini 3.6 fallo al pronosticar y el primer respaldo, Gemini 3.8,
+produjo una distribucion numerica sin errores. No ejercito la busqueda directa
+de Exa, ni demuestra rendimiento competitivo. El workflow de calidad #32
+paso con el cambio; la automatizacion competitiva sigue deshabilitada.
+
 El 27 de septiembre se corrigio el workflow de calidad y paso su ejecucion
 remota #23. La automatizacion competitiva permanece deshabilitada; no hay
 evidencia de premio o dinero cobrado.
