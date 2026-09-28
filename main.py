@@ -95,6 +95,29 @@ def validate_smart_search_report(research: str) -> None:
         raise RuntimeError("SmartSearcher returned no usable research")
 
 
+async def run_smart_search_with_fallback(
+    prompt: str, primary_model: str, fallback_model: str = ""
+) -> str:
+    models = [primary_model]
+    if fallback_model and fallback_model != primary_model:
+        models.append(fallback_model)
+    for index, model in enumerate(models):
+        try:
+            research = await build_research_searcher(model).invoke(prompt)
+            validate_smart_search_report(research)
+            return research
+        except Exception:
+            if index == len(models) - 1:
+                raise
+            logger.warning(
+                "Research model %s failed; retrying with %s",
+                model,
+                models[index + 1],
+                exc_info=True,
+            )
+    raise AssertionError("At least one research model is required")
+
+
 def format_question_metadata(question: MetaculusQuestion) -> str:
     """Supply the model with observable question data already returned by Metaculus."""
     lines = [
@@ -360,9 +383,11 @@ class FJMForecastBot2026(ForecastBot):
                 )
             elif researcher.startswith("smart-searcher/"):
                 model_name = researcher.removeprefix("smart-searcher/")
-                searcher = build_research_searcher(model_name)
-                research = await searcher.invoke(prompt)
-                validate_smart_search_report(research)
+                research = await run_smart_search_with_fallback(
+                    prompt,
+                    model_name,
+                    os.getenv("FALLBACK_RESEARCH_MODEL", "").strip(),
+                )
             elif not researcher or researcher == "None" or researcher == "no_research":
                 research = ""
             else:

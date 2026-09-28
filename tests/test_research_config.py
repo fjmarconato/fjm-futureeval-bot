@@ -1,6 +1,12 @@
 import unittest
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
-from main import build_research_searcher, validate_smart_search_report
+from main import (
+    build_research_searcher,
+    run_smart_search_with_fallback,
+    validate_smart_search_report,
+)
 
 
 class ResearchConfigTests(unittest.TestCase):
@@ -17,6 +23,44 @@ class ResearchConfigTests(unittest.TestCase):
                     validate_smart_search_report(report)
 
         validate_smart_search_report("A dated primary source supports this claim.")
+
+
+class ResearchFallbackTests(unittest.IsolatedAsyncioTestCase):
+    async def test_retries_empty_research_with_alternate_model(self):
+        primary = SimpleNamespace(
+            invoke=AsyncMock(return_value="No search results found for the query")
+        )
+        fallback = SimpleNamespace(invoke=AsyncMock(return_value="Dated primary source"))
+        with patch(
+            "main.build_research_searcher", side_effect=[primary, fallback]
+        ) as build:
+            result = await run_smart_search_with_fallback(
+                "question", "gemini/primary", "gemini/fallback"
+            )
+        self.assertEqual(result, "Dated primary source")
+        self.assertEqual(
+            [call.args[0] for call in build.call_args_list],
+            ["gemini/primary", "gemini/fallback"],
+        )
+
+    async def test_raises_if_both_research_models_fail(self):
+        failed = SimpleNamespace(
+            invoke=AsyncMock(side_effect=RuntimeError("unavailable"))
+        )
+        with patch("main.build_research_searcher", return_value=failed) as build:
+            with self.assertRaisesRegex(RuntimeError, "unavailable"):
+                await run_smart_search_with_fallback(
+                    "question", "gemini/primary", "gemini/fallback"
+                )
+        self.assertEqual(build.call_count, 2)
+
+    async def test_valid_primary_research_does_not_call_fallback(self):
+        primary = SimpleNamespace(invoke=AsyncMock(return_value="Dated primary source"))
+        with patch("main.build_research_searcher", return_value=primary) as build:
+            await run_smart_search_with_fallback(
+                "question", "gemini/primary", "gemini/fallback"
+            )
+        build.assert_called_once_with("gemini/primary")
 
 
 if __name__ == "__main__":
