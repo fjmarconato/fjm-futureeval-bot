@@ -457,6 +457,9 @@ class FJMForecastBot2026(ForecastBot):
             Your interview question is:
             {question.question_text}
 
+            Metaculus question metadata:
+            {format_question_metadata(question)}
+
             The options are: {question.options}
 
 
@@ -537,6 +540,9 @@ class FJMForecastBot2026(ForecastBot):
 
             Your interview question is:
             {question.question_text}
+
+            Metaculus question metadata:
+            {format_question_metadata(question)}
 
             Background:
             {question.background_info}
@@ -650,6 +656,9 @@ class FJMForecastBot2026(ForecastBot):
 
             Your interview question is:
             {question.question_text}
+
+            Metaculus question metadata:
+            {format_question_metadata(question)}
 
             Background:
             {question.background_info}
