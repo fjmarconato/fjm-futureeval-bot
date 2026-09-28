@@ -13,9 +13,9 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
 - El workflow competitivo omite preguntas ya pronosticadas.
 - Las preguntas y predicciones se ejecutan en serie para evitar bloqueos por
   rafagas desde las direcciones compartidas de GitHub Actions.
-- Cada tanda competitiva procesa como maximo cinco preguntas nuevas, igual al
-  maximo que Metaculus puede liberar en una tanda.
-- Desde la siguiente ronda, un ciclo diario refresca hasta tres pronosticos con
+- Cada tanda competitiva procesa como maximo cinco preguntas nuevas entre
+  FutureEval y MiniBench, no cinco por torneo.
+- Un ciclo diario refresca hasta cinco pronosticos con
   al menos 72 horas de antiguedad, siempre despues de cubrir preguntas nuevas.
 - Un monitor cada 30 minutos abre una incidencia en GitHub si no hubo una
   ejecucion exitosa en 45 minutos y la cierra cuando el bot se recupera.
@@ -32,8 +32,8 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
 - Si `FORECAST_MODELS` declara varios modelos, la publicacion tambien exige al
   menos tantas predicciones por informe como modelos distintos; asi cada
   modelo aporta al forecast de cada pregunta.
-- Con `RESEARCH_MODEL=smart-searcher/gemini/gemini-3.6-flash`, el investigador
-  usa Exa para una busqueda y cinco fuentes por pregunta. Requiere
+- Con `RESEARCH_MODEL=smart-searcher/gemini/gemini-3.1-flash-lite`, el
+  investigador usa Exa para una busqueda y cinco fuentes por pregunta. Requiere
   `EXA_API_KEY` como secreto; sin ella, la publicacion competitiva falla antes
   de llamar a Metaculus. El plan gratuito de Exa corta las solicitudes cuando
   se agota el credito mensual.
@@ -68,7 +68,7 @@ secretos:
 - `RESEARCH_MODEL`
 - `PREDICTIONS_PER_RESEARCH_REPORT` (inicial: `2`)
 - `RESEARCH_REPORTS_PER_QUESTION` (inicial: `1`)
-- `MAX_QUESTIONS_PER_RUN` (inicial: `3`)
+- `MAX_QUESTIONS_PER_RUN` (limite: `1` a `5`)
 
 La configuracion objetivo para Otono 2026 usa
 `gemini/gemini-3.6-flash` para pronosticar,
@@ -94,20 +94,25 @@ patrocinada, es un ensamble de tres miembros: `openai/gpt-5.6-sol`,
 una prueba remota exitosa de cada proveedor.
 
 Metaculus rechazo la solicitud de creditos LLM para Otono 2026. El ensamble
-patrocinado anterior queda pospuesto; los premios siguen disponibles. La ruta
-sin gasto propio pendiente de validacion es `smart-searcher/gemini/gemini-3.6-flash`
-con el plan gratuito de Exa. No activar la publicacion hasta verificar la
-clave, la cuota y una corrida remota sin publicar. No contratar un plan pago
-por agotamiento del cupo gratuito sin una decision expresa.
+patrocinado anterior queda pospuesto; los premios siguen disponibles. El 27 de
+septiembre se agrego `EXA_API_KEY` como secreto de GitHub en el plan gratuito
+de Exa, sin medio de pago, con USD 20 de saldo inicial y USD 10 mensuales. Tres
+ejecuciones secas (dos sobre FutureEval) confirmaron investigacion con Exa y
+pronostico con Gemini 3.1 Flash-Lite; no publicaron nada. La prueba adicional
+con Gemini 3.6 para investigacion fallo por un 503 transitorio antes de llamar
+a Exa. El precio que muestra `forecasting-tools` es una estimacion de tarifa
+paga, no una factura verificada.
 
-El precio que muestra `forecasting-tools` es una estimacion de tarifa paga. La
-configuracion actual opera en el nivel gratuito de Gemini, donde texto de
-Gemini 3.5 Flash y Flash-Lite no tiene cargo; la busqueda web queda desactivada
-porque no tiene cuota en este proyecto.
+La clave `GOOGLE_API_KEY` de GitHub esta cifrada; aun no se comprobo a cual
+de los proyectos de Google AI Studio corresponde. Hay proyectos gratuitos y
+uno de pospago en la cuenta. No afirmar costo cero ni activar la publicacion
+automatica antes de verificar esa asociacion o sustituir la clave por una del
+proyecto gratuito con autorizacion especifica. No contratar un plan pago ni
+consumir saldo propio por agotamiento del cupo gratuito sin decision expresa.
 
-No se compra credito propio durante la validacion sin una decision expresa. La
-configuracion nueva se activa el 24 de agosto de 2026 para no cambiar el motor
-durante la MiniBench abierta.
+El 27 de septiembre se corrigio el workflow de calidad y paso su ejecucion
+remota #23. La automatizacion competitiva permanece deshabilitada; no hay
+evidencia de premio o dinero cobrado.
 
 La prueba remota del 10 de agosto confirmo que `gemini/gemini-3.6-flash`
 funciona. Google Search grounding devolvio `429 RESOURCE_EXHAUSTED` y el proxy
