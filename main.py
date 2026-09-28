@@ -248,28 +248,31 @@ class FJMForecastBot2026(ForecastBot):
                         build_forecast_llm(selected_model, allowed_tries=1),
                         purpose="default",
                     )
-                try:
-                    return await super()._make_prediction(question, research)
-                except Exception:
-                    fallback_model = os.getenv(
-                        "FALLBACK_FORECAST_MODEL", ""
-                    ).strip()
-                    current_model = self.get_llm(
-                        "default", guarantee_type="string_name"
-                    )
-                    if not fallback_model or fallback_model == current_model:
-                        raise
-                    logger.warning(
-                        "Forecast model %s failed; switching this run to %s",
-                        current_model,
-                        fallback_model,
-                        exc_info=True,
-                    )
-                    self.set_llm(
-                        build_forecast_llm(fallback_model, allowed_tries=3),
-                        purpose="default",
-                    )
-                    return await super()._make_prediction(question, research)
+                current_model = self.get_llm("default", guarantee_type="string_name")
+                fallback_models = [
+                    model.strip()
+                    for model in os.getenv("FALLBACK_FORECAST_MODEL", "").split(",")
+                    if model.strip()
+                ]
+                models = list(dict.fromkeys([current_model, *fallback_models]))
+                for index, model in enumerate(models):
+                    if index:
+                        self.set_llm(
+                            build_forecast_llm(model, allowed_tries=3),
+                            purpose="default",
+                        )
+                    try:
+                        return await super()._make_prediction(question, research)
+                    except Exception:
+                        if index == len(models) - 1:
+                            raise
+                        logger.warning(
+                            "Forecast model %s failed; retrying with %s",
+                            model,
+                            models[index + 1],
+                            exc_info=True,
+                        )
+                raise AssertionError("At least one forecast model is required")
             finally:
                 cooldown = float(
                     os.getenv("LLM_REQUEST_COOLDOWN_SECONDS", "1.5")

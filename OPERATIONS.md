@@ -32,11 +32,12 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
 - Si `FORECAST_MODELS` declara varios modelos, la publicacion tambien exige al
   menos tantas predicciones por informe como modelos distintos; asi cada
   modelo aporta al forecast de cada pregunta.
-- Con `RESEARCH_MODEL=smart-searcher/gemini/gemini-3.1-flash-lite`, el
-  investigador usa Exa para una busqueda y cinco fuentes por pregunta. Requiere
-  `EXA_API_KEY` como secreto; sin ella, la publicacion competitiva falla antes
-  de llamar a Metaculus. El plan gratuito de Exa corta las solicitudes cuando
-  se agota el credito mensual.
+- Con `RESEARCH_MODEL=smart-searcher/gemini/gemini-3.5-flash-lite`, el
+  investigador usa Exa para una busqueda y cinco fuentes por pregunta. Si el
+  informe falla o queda vacio, intenta `FALLBACK_RESEARCH_MODEL` una vez.
+  Requiere `EXA_API_KEY` como secreto; sin ella, la publicacion competitiva
+  falla antes de llamar a Metaculus. El plan gratuito de Exa corta las
+  solicitudes cuando se agota el credito mensual.
 - Cada ejecucion del workflow registra modo, publicacion, limite de preguntas
   y modelos efectivos en el resumen de GitHub Actions; no registra secretos.
 - En una ejecucion manual, `use_next_config` decide si se aplica esa
@@ -66,28 +67,31 @@ Los modelos se configuran con variables GitHub para poder rotarlos sin tocar
 secretos:
 
 - `FORECAST_MODEL`
+- `FALLBACK_FORECAST_MODEL` (lista ordenada separada por comas)
 - `PARSER_MODEL`
 - `RESEARCH_MODEL`
-- `PREDICTIONS_PER_RESEARCH_REPORT` (inicial: `2`)
+- `FALLBACK_RESEARCH_MODEL`
+- `PREDICTIONS_PER_RESEARCH_REPORT` (actual: `1`)
 - `RESEARCH_REPORTS_PER_QUESTION` (inicial: `1`)
 - `MAX_QUESTIONS_PER_RUN` (limite: `1` a `5`)
 
-La configuracion objetivo para Otono 2026 usa
-`gemini/gemini-3.6-flash` para pronosticar,
-`gemini/gemini-3.1-flash-lite` para parsear y
-un proveedor de investigacion patrocinado cuando la cuota quede verificada. La
-clave de Google se guarda como secreto, no como variable del repositorio.
+La configuracion para Otono 2026 usa `gemini/gemini-3.6-flash` para
+pronosticar, `gemini/gemini-3.5-flash-lite` para investigar con Exa y parsear,
+`gemini/gemini-3.5-flash` como respaldo de investigacion, y
+`gemini/gemini-3.8-flash,gemini/gemini-3.5-flash-lite` como respaldos ordenados
+de pronostico. La clave de Google se guarda como secreto, no como variable del
+repositorio.
 
 El torneo competitivo debe usar el slug `fall-futureeval-2026` (proyecto
 `33121`). El codigo rechaza explicitamente los identificadores de Verano 2026.
 No se activa una temporada con `no_research`: esa configuracion queda limitada
 a pruebas tecnicas mientras se renuevan AskNews o los creditos patrocinados.
 
-Mientras la cuota de 3.6 siga en el nivel gratuito, cada pregunta usa una sola
-estimacion. Ante un 429, 503 u otro error del modelo principal, la tanda cambia
-a `gemini/gemini-3.1-flash-lite`; los errores de una pregunta no cancelan los
-resultados validos de las demas. Los creditos patrocinados permiten volver a
-un ensamble mayor despues de verificar la cuota concedida.
+Mientras la cuota siga en el nivel gratuito, cada pregunta usa una sola
+estimacion. Ante un 429, 503 u otro error del modelo principal, se intenta
+cada respaldo de pronostico en orden; los errores de una pregunta no cancelan
+los resultados validos de las demas. No se activa un ensamble mayor sin cuota
+verificada.
 
 La configuracion competitiva objetivo, una vez recibida y probada la clave
 patrocinada, es un ensamble de tres miembros: `openai/gpt-5.6-sol`,
@@ -136,6 +140,16 @@ pregunta indicado en el log es una estimacion de tarifa paga del paquete,
 no un cargo verificado. La configuracion programada no cambio con estos
 overrides manuales; FutureEval y MiniBench tenian cero preguntas elegibles
 en la prueba #1077.
+
+La [prueba seca #1085](https://github.com/fjmarconato/fjm-futureeval-bot/actions/runs/36498974488)
+completo el recorrido de una pregunta en `bot-testing-area`: investigacion
+con Exa y Gemini 3.5 Flash-Lite, pronostico con Gemini 3.8 Flash y cero
+errores, con `publish=false`. Es una prueba de funcionamiento, no una
+comparacion de puntaje entre modelos. La
+[prueba seca #1086](https://github.com/fjmarconato/fjm-futureeval-bot/actions/runs/36499121630)
+encontro cero preguntas elegibles tanto en FutureEval como en MiniBench. El
+workflow de calidad #30 paso con el cambio de respaldo de investigacion. No
+se publico ningun pronostico ni se habilito la automatizacion competitiva.
 
 El 27 de septiembre se corrigio el workflow de calidad y paso su ejecucion
 remota #23. La automatizacion competitiva permanece deshabilitada; no hay
