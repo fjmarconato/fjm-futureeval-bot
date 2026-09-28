@@ -121,6 +121,10 @@ class FJMForecastBot2026(ForecastBot):
             limit = int(raw_limit)
             if limit <= 0:
                 raise ValueError("MAX_QUESTIONS_PER_RUN must be a positive integer")
+            limit = getattr(self, "_remaining_question_budget", limit)
+            if limit == 0:
+                logger.info("Question budget exhausted for this run")
+                return []
 
         refresh_after_hours = float(
             os.getenv("REFRESH_AFTER_HOURS", "0").strip() or "0"
@@ -133,6 +137,8 @@ class FJMForecastBot2026(ForecastBot):
             max_questions=limit,
             refresh_after_hours=refresh_after_hours,
         )
+        if limit is not None:
+            self._remaining_question_budget = limit - len(questions_to_run)
         new_count = sum(not question.already_forecasted for question in questions_to_run)
         refresh_count = len(questions_to_run) - new_count
         logger.info(

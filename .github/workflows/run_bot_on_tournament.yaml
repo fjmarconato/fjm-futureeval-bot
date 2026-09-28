@@ -31,6 +31,11 @@ on:
         required: true
         default: 5
         type: number
+      research_model_override:
+        description: Research model for this manual run only (empty uses repository configuration)
+        required: false
+        default: ""
+        type: string
   schedule:
     - cron: "11 */3 * * *" # backup bootstrap; chained dispatches provide normal coverage
 
@@ -93,6 +98,9 @@ jobs:
           fi
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             export MAX_QUESTIONS_PER_RUN="${MANUAL_MAX_QUESTIONS}"
+            if [[ -n "${MANUAL_RESEARCH_MODEL_OVERRIDE}" ]]; then
+              export RESEARCH_MODEL="${MANUAL_RESEARCH_MODEL_OVERRIDE}"
+            fi
           fi
           if ! [[ "${MAX_QUESTIONS_PER_RUN}" =~ ^[1-5]$ ]]; then
             echo "::error::MAX_QUESTIONS_PER_RUN must be between 1 and 5"
@@ -136,6 +144,7 @@ jobs:
           PREDICTIONS_PER_RESEARCH_REPORT: ${{ vars.PREDICTIONS_PER_RESEARCH_REPORT }}
           RESEARCH_REPORTS_PER_QUESTION: ${{ vars.RESEARCH_REPORTS_PER_QUESTION }}
           MANUAL_MAX_QUESTIONS: ${{ inputs.max_questions }}
+          MANUAL_RESEARCH_MODEL_OVERRIDE: ${{ inputs.research_model_override }}
           REPO_MAX_QUESTIONS: ${{ vars.MAX_QUESTIONS_PER_RUN || '5' }}
           LLM_REQUEST_COOLDOWN_SECONDS: 2
           PUBLISH_FORECASTS: ${{ github.event_name == 'schedule' || inputs.publish }}
