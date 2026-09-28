@@ -81,11 +81,18 @@ def build_forecast_llm(model: str, *, allowed_tries: int) -> GeneralLlm:
 def build_research_searcher(model_name: str) -> SmartSearcher:
     """Use a small, source-backed research pass within the free Exa allowance."""
     return SmartSearcher(
-        model=build_forecast_llm(model_name, allowed_tries=1),
+        model=build_forecast_llm(model_name, allowed_tries=3),
         num_searches_to_run=1,
         num_sites_per_search=5,
         use_advanced_filters=False,
     )
+
+
+def validate_smart_search_report(research: str) -> None:
+    if not research.strip() or research.lstrip().startswith(
+        "No search results found for the query"
+    ):
+        raise RuntimeError("SmartSearcher returned no usable research")
 
 
 class FJMForecastBot2026(ForecastBot):
@@ -324,6 +331,7 @@ class FJMForecastBot2026(ForecastBot):
                 model_name = researcher.removeprefix("smart-searcher/")
                 searcher = build_research_searcher(model_name)
                 research = await searcher.invoke(prompt)
+                validate_smart_search_report(research)
             elif not researcher or researcher == "None" or researcher == "no_research":
                 research = ""
             else:
