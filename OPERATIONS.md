@@ -23,8 +23,9 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
   minutos despues de una ejecucion correcta. El cron de tres horas es solo un
   bootstrap de recuperacion porque GitHub puede demorar o descartar schedules.
 - Toda publicacion programada depende de la variable
-  `COMPETITIVE_AUTOMATION_ENABLED=true`; mantenerla en `false` durante el
-  preflight.
+  `COMPETITIVE_AUTOMATION_ENABLED=true`. El piloto competitivo esta activo
+  desde el 28 de septiembre de 2026, con autorizacion expresa de Federico y
+  solo con las cuotas gratuitas verificadas.
 - La publicacion manual o programada en `tournament` se rechaza antes de
   consultar Metaculus si `RESEARCH_MODEL` esta vacio o configurado como
   `no_research`/`None`. Primero probar un proveedor de investigacion con una
@@ -164,7 +165,20 @@ completo una pregunta del area de test con `publish=false`: hubo investigacion
 valida, Gemini 3.6 fallo al pronosticar y el primer respaldo, Gemini 3.8,
 produjo una distribucion numerica sin errores. No ejercito la busqueda directa
 de Exa, ni demuestra rendimiento competitivo. El workflow de calidad #32
-paso con el cambio; la automatizacion competitiva sigue deshabilitada.
+paso con el cambio; en ese momento la automatizacion competitiva seguia
+deshabilitada.
+
+Tras la autorizacion expresa de Federico, el 28 de septiembre se activo
+`COMPETITIVE_AUTOMATION_ENABLED=true` y se inicio un ciclo competitivo con
+`publish=true`, maximo cinco preguntas y dispatch encadenado. La
+[ejecucion #1089](https://github.com/fjmarconato/fjm-futureeval-bot/actions/runs/36501486294)
+termino correctamente: encontro cero preguntas abiertas en FutureEval y
+MiniBench, no publico nada y lanzo la
+[ejecucion #1090](https://github.com/fjmarconato/fjm-futureeval-bot/actions/runs/36502235525).
+GitHub Actions usa runners estandar de un repositorio publico; Exa sigue en
+plan gratuito sin medio de pago y la clave Gemini verificada es de nivel
+gratuito. No se habilitaron compras ni proveedores pagos. La continuidad del
+workflow no prueba un puntaje, premio o ingreso.
 
 El 27 de septiembre se corrigio el workflow de calidad y paso su ejecucion
 remota #23. La automatizacion competitiva permanece deshabilitada; no hay
