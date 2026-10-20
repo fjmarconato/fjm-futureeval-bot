@@ -66,6 +66,25 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
 
 ## Modelos y presupuesto
 
+### Recuperacion del 20 de octubre de 2026
+
+Se reemplazo `GOOGLE_API_KEY` por una clave del proyecto dedicado
+`FJM FutureEval`, que AI Studio muestra en `Nivel gratuito`, sin activar
+facturacion. GitHub confirmo la actualizacion del secreto; no se guardo su
+valor en archivos del repositorio.
+
+La prueba seca 39427329969 produjo un pronostico completo con investigacion,
+sin publicar y sin errores. El paso `Run bot` de la ejecucion competitiva
+39427791797 termino correctamente y confirmo un pronostico enviado a Fall
+2026. Se reanudo el ciclo encadenado previamente autorizado, con limite de
+cinco preguntas. Ver `audits/2026-10-20.md` para evidencia y limites.
+
+El monitor solo considera las ejecuciones identificadas como
+`Live tournament forecasts`: un test o dry run exitoso ya no puede cerrar una
+alerta sobre la operacion competitiva. La comprobacion de calidad 39427744075
+paso 44 tests de Python y seis escenarios del monitor. No se cambiaron los
+modelos ni las probabilidades a partir de preguntas activas.
+
 ### Revision del 19 de octubre de 2026
 
 Google rechazo la credencial usada en GitHub con `API_KEY_INVALID`. La ultima
