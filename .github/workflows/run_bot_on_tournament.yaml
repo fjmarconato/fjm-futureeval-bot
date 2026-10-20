@@ -86,6 +86,7 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction --no-root
       - name: Run bot
+        id: forecast
         run: |
           export MAX_QUESTIONS_PER_RUN="${REPO_MAX_QUESTIONS}"
           activate_next=false
@@ -175,7 +176,7 @@ jobs:
           NEXT_MAX_QUESTIONS_PER_RUN: ${{ vars.NEXT_MAX_QUESTIONS_PER_RUN || '5' }}
           MANUAL_MODE: ${{ inputs.mode || 'tournament' }}
       - name: Dispatch the next coverage cycle
-        if: always() && (github.event_name == 'schedule' || inputs.chain)
+        if: always() && !cancelled() && steps.forecast.outputs.provider_auth_blocked != 'true' && (github.event_name == 'schedule' || inputs.chain)
         shell: bash
         run: |
           set -euo pipefail

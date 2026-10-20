@@ -33,6 +33,6 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction --no-root
       - name: Compile source
-        run: poetry run python -m compileall -q main.py calibration.py competition_config.py question_selection.py tests
+        run: poetry run python -m compileall -q main.py calibration.py competition_config.py question_selection.py provider_preflight.py tests
       - name: Run tests
         run: poetry run python -m unittest discover -s tests -v

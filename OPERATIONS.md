@@ -66,6 +66,27 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
 
 ## Modelos y presupuesto
 
+### Revision del 19 de octubre de 2026
+
+Google rechazo la credencial usada en GitHub con `API_KEY_INVALID`. La ultima
+ejecucion exitosa inspeccionada (39179840277) habia encontrado cero preguntas;
+por eso no confirmaba que la clave siguiera siendo valida. La ejecucion fallida
+39353178287 encontro una pregunta pendiente en Fall y tres en MiniBench; no
+logro completar sus pronosticos. No declarar la cobertura completa ni el bot
+recuperado hasta restaurar la credencial gratuita y verificar una prueba seca
+seguida de publicaciones efectivas.
+
+El preflight consulta el listado de modelos de Google antes de investigar o
+pronosticar, sin generar contenido. Ante una credencial invalida, el workflow
+detiene su cadena de reintentos; el bootstrap programado vuelve a comprobarla.
+Esto tambien protege los ciclos diarios de refresco. Los errores transitorios
+conservan el reintento diferido. El monitor informa fallo cuando el bot no esta
+sano y mantiene una unica incidencia abierta.
+
+La renovacion de `GOOGLE_API_KEY` quedo pendiente por un fallo de conexion del
+navegador con AI Studio. No se creo ninguna clave, no se habilito facturacion y
+no se verifico el saldo actual de Exa. Ver `audits/2026-10-19.md`.
+
 Los modelos se configuran con variables GitHub para poder rotarlos sin tocar
 secretos:
 

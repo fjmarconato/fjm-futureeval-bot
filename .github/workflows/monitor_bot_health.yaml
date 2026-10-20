@@ -83,3 +83,11 @@ jobs:
             core.info(
               `health=${isHealthy ? "healthy" : "unhealthy"} latest=${latestCompleted?.html_url ?? "none"}`,
             );
+            await core.summary
+              .addHeading(isHealthy ? "Forecast automation healthy" : "Forecast automation needs attention")
+              .addRaw(`Latest completed forecast: ${latestCompleted?.html_url ?? "none"}\n`)
+              .addRaw(`Conclusion: ${latestCompleted?.conclusion ?? "none"}\n`)
+              .write();
+            if (!isHealthy) {
+              core.setFailed("No recent successful forecast run. Inspect the forecast logs and restore the provider credential if authentication is blocked.");
+            }

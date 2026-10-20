@@ -20,6 +20,11 @@ from competition_config import (
     validate_live_research_configuration,
 )
 from question_selection import select_questions_for_run
+from provider_preflight import (
+    ProviderAuthenticationError,
+    record_authentication_block,
+    validate_gemini_credentials,
+)
 
 # Runtime helpers (env validation, banners, dependency-warning suppression).
 from bot_helpers import (
@@ -1040,6 +1045,12 @@ if __name__ == "__main__":
         parser.error(str(error))
 
     check_environment(strict=True)
+    try:
+        validate_gemini_credentials()
+    except ProviderAuthenticationError as error:
+        record_authentication_block()
+        logger.error("%s", error)
+        raise SystemExit(78) from None
     publish_to_metaculus = args.publish
     print_startup_banner(run_mode, will_publish=publish_to_metaculus)
 
