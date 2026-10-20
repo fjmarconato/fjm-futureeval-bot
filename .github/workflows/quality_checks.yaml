@@ -36,3 +36,5 @@ jobs:
         run: poetry run python -m compileall -q main.py calibration.py competition_config.py question_selection.py provider_preflight.py tests
       - name: Run tests
         run: poetry run python -m unittest discover -s tests -v
+      - name: Check monitor behavior
+        run: node --test tests/test_monitor_workflow.cjs

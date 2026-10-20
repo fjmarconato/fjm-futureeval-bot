@@ -32,7 +32,7 @@ jobs:
               per_page: 20,
             });
             const latestCompleted = runsResponse.data.workflow_runs.find(
-              (run) => run.status === "completed",
+              (run) => run.status === "completed" && run.display_title === "Live tournament forecasts",
             );
             const staleAfterMinutes = 45;
             const staleAfterMs = staleAfterMinutes * 60 * 1000;
@@ -55,7 +55,7 @@ jobs:
             if (!isHealthy && !existingAlert) {
               const runDetails = latestCompleted
                 ? `Latest run: ${latestCompleted.html_url}\nConclusion: ${latestCompleted.conclusion}\nCreated: ${latestCompleted.created_at}`
-                : "No completed forecast run was found.";
+                : "No completed live tournament forecast run was found. Test and dry-run workflows do not establish live coverage.";
               await github.rest.issues.create({
                 owner,
                 repo,

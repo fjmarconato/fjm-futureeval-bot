@@ -1,4 +1,5 @@
 name: Forecast on new AI tournament questions
+run-name: ${{ (github.event_name == 'schedule' || (inputs.publish && inputs.mode == 'tournament')) && 'Live tournament forecasts' || 'Test or dry-run forecasts' }}
 
 on:
   workflow_dispatch:
