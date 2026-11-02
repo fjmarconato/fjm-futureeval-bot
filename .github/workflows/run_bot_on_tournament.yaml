@@ -27,6 +27,11 @@ on:
         required: true
         default: false
         type: boolean
+      refresh_stale:
+        description: Include forecasts at least 72 hours old after new questions
+        required: true
+        default: false
+        type: boolean
       max_questions:
         description: Maximum questions for this manual run
         required: true
@@ -131,6 +136,7 @@ jobs:
             echo "- Publishing: \`${PUBLISH_FORECASTS}\`"
             echo "- Next-round config: \`${activate_next}\`"
             echo "- Max questions: \`${MAX_QUESTIONS_PER_RUN}\`"
+            echo "- Refresh threshold (hours): \`${REFRESH_AFTER_HOURS}\`"
             echo "- Forecast model(s): \`${FORECAST_MODELS:-${FORECAST_MODEL:-provider default}}\`"
             echo "- Research model: \`${RESEARCH_MODEL:-provider default}\`"
             echo "- Parser model: \`${PARSER_MODEL:-provider default}\`"
@@ -168,6 +174,7 @@ jobs:
           MANUAL_PARSER_MODEL_OVERRIDE: ${{ inputs.parser_model_override }}
           REPO_MAX_QUESTIONS: ${{ vars.MAX_QUESTIONS_PER_RUN || '5' }}
           LLM_REQUEST_COOLDOWN_SECONDS: 2
+          REFRESH_AFTER_HOURS: ${{ inputs.refresh_stale && '72' || '0' }}
           PUBLISH_FORECASTS: ${{ github.event_name == 'schedule' || inputs.publish }}
           USE_NEXT_CONFIG: ${{ inputs.use_next_config || false }}
           NEXT_CONFIG_ACTIVATION_UTC: ${{ vars.NEXT_CONFIG_ACTIVATION_UTC }}
@@ -178,31 +185,29 @@ jobs:
           MANUAL_MODE: ${{ inputs.mode || 'tournament' }}
       - name: Dispatch the next coverage cycle
         if: always() && !cancelled() && steps.forecast.outputs.provider_auth_blocked != 'true' && (github.event_name == 'schedule' || inputs.chain)
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          delay_seconds=480
-          if [[ "${{ job.status }}" != "success" ]]; then
-            delay_seconds=1200
-          fi
-          sleep "${delay_seconds}"
-
-          active_runs="$(gh api \
-            "repos/${GITHUB_REPOSITORY}/actions/workflows/run_bot_on_tournament.yaml/runs?per_page=20" \
-            --jq '.workflow_runs[] | select(.status == "queued" or .status == "in_progress") | .id' \
-            | awk -v current="${GITHUB_RUN_ID}" '$0 != current { count++ } END { print count + 0 }')"
-          if [[ "${active_runs}" != "0" ]]; then
-            echo "A queued or running coverage cycle already exists; not dispatching another."
-            exit 0
-          fi
-
-          gh workflow run run_bot_on_tournament.yaml \
-            --ref main \
-            -f publish=true \
-            -f use_next_config=false \
-            -f mode=tournament \
-            -f chain=true \
-            -f max_questions=5
+        uses: actions/github-script@v8
         env:
-          GH_TOKEN: ${{ github.token }}
+          COVERAGE_JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const delay = process.env.COVERAGE_JOB_STATUS === "success" ? 480000 : 1200000;
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            const { owner, repo } = context.repo;
+            const workflowId = "run_bot_on_tournament.yaml";
+            const response = await github.rest.actions.listWorkflowRuns({
+              owner, repo, workflow_id: workflowId, per_page: 20,
+            });
+            const waitingStates = new Set(["queued", "in_progress", "pending", "waiting", "requested"]);
+            if (response.data.workflow_runs.some((run) =>
+              run.id !== context.runId && waitingStates.has(run.status)
+            )) {
+              core.info("A coverage or daily-refresh run is already waiting; preserving its turn.");
+              return;
+            }
+            await github.rest.actions.createWorkflowDispatch({
+              owner, repo, workflow_id: workflowId, ref: "main",
+              inputs: {
+                publish: "true", use_next_config: "false", mode: "tournament",
+                chain: "true", max_questions: "5", refresh_stale: "false",
+              },
+            });

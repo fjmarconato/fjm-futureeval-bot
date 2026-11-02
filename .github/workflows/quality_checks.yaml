@@ -38,3 +38,5 @@ jobs:
         run: poetry run python -m unittest discover -s tests -v
       - name: Check monitor behavior
         run: node --test tests/test_monitor_workflow.cjs
+      - name: Check coverage and refresh queue behavior
+        run: node --test tests/test_coverage_workflows.cjs

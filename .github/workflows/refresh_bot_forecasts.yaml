@@ -6,68 +6,40 @@ on:
     - cron: "35 3 * * *"
 
 permissions:
-  contents: read
-
-concurrency:
-  group: forecast-tournament-writes
-  cancel-in-progress: false
+  actions: write
 
 jobs:
-  refresh:
-    if: github.event_name == 'workflow_dispatch' || vars.COMPETITIVE_AUTOMATION_ENABLED == 'true'
+  request_refresh:
+    if: vars.COMPETITIVE_AUTOMATION_ENABLED == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 5
     steps:
-      - name: Check activation date
-        id: activation
-        shell: bash
-        run: |
-          if [[ -n "${NEXT_CONFIG_ACTIVATION_UTC}" && "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "${NEXT_CONFIG_ACTIVATION_UTC}" ]]; then
-            echo "active=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "active=false" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Queue refresh through the shared coverage workflow
+        uses: actions/github-script@v8
         env:
           NEXT_CONFIG_ACTIVATION_UTC: ${{ vars.NEXT_CONFIG_ACTIVATION_UTC }}
-      - name: Check out repository
-        if: steps.activation.outputs.active == 'true'
-        uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        if: steps.activation.outputs.active == 'true'
         with:
-          python-version: "3.11"
-      - name: Install poetry
-        if: steps.activation.outputs.active == 'true'
-        uses: snok/install-poetry@v1
-        with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-          installer-parallel: true
-      - name: Load cached venv
-        if: steps.activation.outputs.active == 'true'
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-      - name: Install dependencies
-        if: steps.activation.outputs.active == 'true'
-        run: poetry install --no-interaction --no-root
-      - name: Refresh stale forecasts
-        if: steps.activation.outputs.active == 'true'
-        run: poetry run python main.py --mode tournament --publish
-        env:
-          METACULUS_TOKEN: ${{ secrets.METACULUS_TOKEN }}
-          FUTUREEVAL_TOURNAMENT_ID: fall-futureeval-2026
-          EXA_API_KEY: ${{ secrets.EXA_API_KEY }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          FORECAST_MODEL: ${{ vars.NEXT_FORECAST_MODEL }}
-          FORECAST_MODELS: ${{ vars.FORECAST_MODELS }}
-          FALLBACK_FORECAST_MODEL: ${{ vars.FALLBACK_FORECAST_MODEL }}
-          PARSER_MODEL: ${{ vars.PARSER_MODEL }}
-          RESEARCH_MODEL: ${{ vars.NEXT_RESEARCH_MODEL }}
-          FALLBACK_RESEARCH_MODEL: ${{ vars.FALLBACK_RESEARCH_MODEL }}
-          PREDICTIONS_PER_RESEARCH_REPORT: ${{ vars.NEXT_PREDICTIONS_PER_RESEARCH_REPORT }}
-          RESEARCH_REPORTS_PER_QUESTION: ${{ vars.RESEARCH_REPORTS_PER_QUESTION }}
-          MAX_QUESTIONS_PER_RUN: 5
-          REFRESH_AFTER_HOURS: 72
-          LLM_REQUEST_COOLDOWN_SECONDS: 2
+          script: |
+            const activation = process.env.NEXT_CONFIG_ACTIVATION_UTC;
+            if (!activation) {
+              core.info("No refresh activation date is configured.");
+              return;
+            }
+            const activationTime = Date.parse(activation);
+            if (!Number.isFinite(activationTime)) {
+              core.setFailed("NEXT_CONFIG_ACTIVATION_UTC is not a valid timestamp.");
+              return;
+            }
+            if (Date.now() <= activationTime) {
+              core.info("The refresh configuration is not active yet.");
+              return;
+            }
+            const { owner, repo } = context.repo;
+            await github.rest.actions.createWorkflowDispatch({
+              owner, repo, workflow_id: "run_bot_on_tournament.yaml", ref: "main",
+              inputs: {
+                publish: "true", use_next_config: "true", mode: "tournament",
+                chain: "true", max_questions: "5", refresh_stale: "true",
+              },
+            });
+            core.info("Queued one daily refresh; its coverage run will resume the normal loop.");
