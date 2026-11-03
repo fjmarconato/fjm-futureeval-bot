@@ -66,6 +66,21 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
 
 ## Modelos y presupuesto
 
+### Revision del 2 de noviembre de 2026
+
+El piloto seguia cubriendo preguntas nuevas, pero los tres ultimos refrescos
+diarios se habian cancelado antes de crear un job. Se corrigio la competencia
+por la cola: el workflow diario ahora solo solicita una ejecucion del mismo
+writer de cobertura, con `refresh_stale=true`, y el encadenador respeta los
+estados `pending`, `waiting` y `requested`, ademas de los ya activos.
+
+La ejecucion 41546983550 verifico el umbral de 72 horas, publico una pregunta
+nueva de MiniBench sin errores y continuo con el ciclo normal. No encontro
+preguntas antiguas elegibles; no se afirma que haya actualizado pronosticos
+antiguos. El cambio 047cf7e paso los tests de calidad. La posicion provisional
+observada en Fall fue 195 de 284, puntaje -28 y premio indicado como `-`.
+Ver `audits/2026-11-02.md`. No se cambiaron modelos, prompts ni presupuesto.
+
 ### Recuperacion del 20 de octubre de 2026
 
 Se reemplazo `GOOGLE_API_KEY` por una clave del proyecto dedicado
