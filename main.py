@@ -1066,7 +1066,7 @@ if __name__ == "__main__":
         publish_reports_to_metaculus=publish_to_metaculus,
         folder_to_save_reports_to=os.getenv("REPORTS_DIRECTORY") or None,
         skip_previously_forecasted_questions=True,
-        extra_metadata_in_explanation=True,
+        extra_metadata_in_explanation=False,
         enable_summarize_research=False,
         required_successful_predictions=0.5,
         llms=build_llm_configuration(),
