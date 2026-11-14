@@ -895,14 +895,14 @@ files = [
 
 [[package]]
 name = "forecasting-tools"
-version = "0.3.1"
+version = "0.3.6"
 description = "AI forecasting and research tools to help humans reason about and forecast the future"
 optional = false
-python-versions = "<4.0,>=3.11"
+python-versions = ">=3.11"
 groups = ["main"]
 files = [
-    {file = "forecasting_tools-0.3.1-py3-none-any.whl", hash = "sha256:647146a85a6a8ad32dc4dc45673449562f2be6938ae9e92e5ac25ee20101120c"},
-    {file = "forecasting_tools-0.3.1.tar.gz", hash = "sha256:5d4f561fcb4919cc8c3d7cb5843d70de22b523516a689e018446d2bd4b874bdc"},
+    {file = "forecasting_tools-0.3.6-py3-none-any.whl", hash = "sha256:fd0ec1718de7ee5e81fe854c9f64f78d79c73b8300a1f7febcfd9d7f2f2f8d27"},
+    {file = "forecasting_tools-0.3.6.tar.gz", hash = "sha256:254602dc539f9028ac2fe63a80bc171931b8d4aea89bc5c39eac121275fe184c"},
 ]
 
 [package.dependencies]
@@ -912,7 +912,7 @@ aiolimiter = ">=1.1.0,<2.0.0"
 asknews = ">=0.9.1,<0.15.0"
 asyncio = ">=3.0.0,<5.0.0"
 exceptiongroup = ">=1.2.2,<2.0.0"
-litellm = ">=1.59.1,<1.76.dev0 || >=1.78.dev0,<1.82.7 || >1.82.7,<1.82.8 || >1.82.8,<2.0.0"
+litellm = ">=1.59.1,<1.76.dev0 || >=1.78.dev0,<1.82.7 || >1.82.7,<1.82.8 || >1.82.8,<1.107.dev0 || >=1.110.dev0,<2.0.0"
 nest-asyncio = ">=1.5.8,<2.0.0"
 numpy = ">=1.26.0,<3.0.0"
 openai = ">=1.51.0,<4.0.0"

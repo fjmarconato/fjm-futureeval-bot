@@ -66,6 +66,21 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
 
 ## Modelos y presupuesto
 
+### Incidente de credenciales - 13 de noviembre de 2026
+
+El 11 de noviembre Metaculus aviso que comentarios de algunos bots contenian
+claves debido a la serializacion de credenciales de `GeneralLlm` en
+`forecasting-tools`. El codigo activo tenia
+`extra_metadata_in_explanation=True` y el lockfile usaba 0.3.1, anterior al
+parche oficial #353. Se desactivo la metadata extra en `main.py` y se actualizo
+el lockfile a 0.3.6. El hotfix 83c184d ya esta en `main`; los tests locales
+pasaron. Ver `audits/2026-11-13.md`.
+
+La alerta no identifica comentarios ni claves concretas. Tratar las claves de
+proveedor usadas por `GeneralLlm` como potencialmente expuestas hasta revisar
+los comentarios publicados y rotar cada credencial afectada. Esta auditoria no
+confirma que se haya completado esa rotacion ni que no hubiera uso indebido.
+
 ### Revision del 2 de noviembre de 2026
 
 El piloto seguia cubriendo preguntas nuevas, pero los tres ultimos refrescos
