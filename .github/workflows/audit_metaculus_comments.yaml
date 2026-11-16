@@ -8,7 +8,7 @@ permissions:
 
 concurrency:
   group: audit-metaculus-comments
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   audit:
