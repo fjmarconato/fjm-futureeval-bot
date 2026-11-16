@@ -78,22 +78,9 @@ def test_unarchived_comment_failure_is_not_silently_skipped():
             raise AssertionError("expected the API error to propagate")
 
 
-def test_comments_rejects_repeated_pagination_cursor():
-    page = {"results": [{"id": 1}], "next": "https://www.metaculus.com/api/comments/"}
-    with patch("audit_metaculus_comments._get_json", return_value=page):
-        try:
-            list(_comments(Mock(), user_id=7, is_private=False))
-        except RuntimeError as exc:
-            assert "repeated the public comments pagination cursor" in str(exc)
-        else:
-            raise AssertionError("expected repeated pagination cursor to fail")
-
-
 def test_comments_rejects_repeated_page_ids():
-    pages = [
-        {"results": [{"id": 1}], "next": "https://www.metaculus.com/api/comments/?offset=1"},
-        {"results": [{"id": 1}], "next": None},
-    ]
+    page_items = [{"id": comment_id} for comment_id in range(100)]
+    pages = [{"results": page_items}, {"results": page_items}]
     with patch("audit_metaculus_comments._get_json", side_effect=pages):
         try:
             list(_comments(Mock(), user_id=7, is_private=False))
@@ -107,7 +94,6 @@ def test_comments_stops_when_reported_total_is_reached():
     page = {
         "count": 1,
         "results": [{"id": 1}],
-        "next": "https://www.metaculus.com/api/comments/?offset=1",
     }
     with patch("audit_metaculus_comments._get_json", return_value=page) as get_json:
         assert list(_comments(Mock(), user_id=7, is_private=False)) == [{"id": 1}]
@@ -115,12 +101,19 @@ def test_comments_stops_when_reported_total_is_reached():
     get_json.assert_called_once()
 
 
-def test_comments_fails_on_empty_page_before_reported_total():
-    page = {"count": 2, "results": [], "next": "https://www.metaculus.com/api/comments/?offset=1"}
-    with patch("audit_metaculus_comments._get_json", return_value=page):
-        try:
-            list(_comments(Mock(), user_id=7, is_private=False))
-        except RuntimeError as exc:
-            assert "empty public comments page before the reported total" in str(exc)
-        else:
-            raise AssertionError("expected an empty page before total to fail")
+def test_comments_keeps_author_filter_on_every_page_and_stops_on_partial_page():
+    full_page = [{"id": comment_id} for comment_id in range(100)]
+    last_page = [{"id": 100}]
+    session = Mock()
+    with patch(
+        "audit_metaculus_comments._get_json",
+        side_effect=[{"results": full_page}, {"results": last_page}],
+    ) as get_json:
+        assert len(list(_comments(session, user_id=7, is_private=True))) == 101
+
+    assert get_json.call_args_list[0].args[2] == {
+        "author": 7, "is_private": "true", "limit": 100, "offset": 0
+    }
+    assert get_json.call_args_list[1].args[2] == {
+        "author": 7, "is_private": "true", "limit": 100, "offset": 100
+    }

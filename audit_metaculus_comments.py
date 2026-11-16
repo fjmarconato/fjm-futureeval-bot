@@ -92,22 +92,17 @@ def _retry_delay(retry_after: str | None, attempt: int) -> float:
 
 def _comments(session: requests.Session, user_id: int, is_private: bool) -> Iterator[dict[str, Any]]:
     url = urljoin(BASE_URL, "comments/")
-    seen_urls: set[str] = set()
     seen_ids: set[int] = set()
     page_number = 0
-    params: dict[str, Any] | None = {
+    params: dict[str, Any] = {
         "author": user_id,
         "is_private": str(is_private).lower(),
         "limit": PAGE_SIZE,
-        "offset": 0,
     }
-    while url:
-        if url in seen_urls:
-            visibility = "private" if is_private else "public"
-            raise RuntimeError(f"Metaculus repeated the {visibility} comments pagination cursor")
-        seen_urls.add(url)
-        page = _get_json(session, url, params)
-        params = None
+    offset = 0
+    while True:
+        params["offset"] = offset
+        page = _get_json(session, url, params.copy())
         results = page.get("results")
         if not isinstance(results, list):
             raise RuntimeError("Metaculus API response omitted comment results")
@@ -126,15 +121,14 @@ def _comments(session: requests.Session, user_id: int, is_private: bool) -> Iter
             f"unique IDs {len(seen_ids)} of {expected_total if isinstance(expected_total, int) else 'unknown'}",
             flush=True,
         )
-        yield from page_items
-        next_url = page.get("next")
-        if isinstance(expected_total, int) and len(seen_ids) >= expected_total:
-            break
         if not page_items:
-            raise RuntimeError(
-                f"Metaculus returned an empty {visibility} comments page before the reported total"
-            )
-        url = urljoin(BASE_URL, next_url) if isinstance(next_url, str) and next_url else ""
+            break
+        yield from page_items
+        if len(page_items) < PAGE_SIZE or (
+            isinstance(expected_total, int) and len(seen_ids) >= expected_total
+        ):
+            break
+        offset += len(page_items)
 
 
 def _full_comment_text(session: requests.Session, comment: dict[str, Any]) -> str:
