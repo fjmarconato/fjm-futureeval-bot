@@ -66,6 +66,21 @@ temporada o un premio MiniBench de USD 50 cada dos meses.
 
 ## Modelos y presupuesto
 
+### Revision del 16 de noviembre de 2026
+
+Los ciclos recientes ejecutan el commit 916d879 con `extra_metadata_in_explanation=False`
+y `forecasting-tools 0.3.6`. El refresco coordinado 43862143484 y la cobertura
+43862157238 terminaron correctamente. Fall devolvio cero preguntas elegibles;
+MiniBench devolvio cuatro, sin pronosticos nuevos ni vencidos en esa tanda.
+La ronda MiniBench vigente anuncia 60 preguntas del 16 de noviembre al 4 de
+diciembre, pero no se afirma cobertura completa. La ejecucion 43863813620 seguia
+en curso al revisar.
+
+Sigue pendiente revisar comentarios historicos y que Federico rote la clave
+afectada y actualice `GOOGLE_API_KEY` en GitHub. El aviso de Metaculus no
+identifica comentarios ni proveedor; no afirmar rotacion, ausencia de abuso,
+premio o ingreso hasta verificarlos. Ver `audits/2026-11-16.md`.
+
 ### Incidente de credenciales - 13 de noviembre de 2026
 
 El 11 de noviembre Metaculus aviso que comentarios de algunos bots contenian
