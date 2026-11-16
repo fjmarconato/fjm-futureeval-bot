@@ -52,7 +52,13 @@ def _looks_like_token(candidate: str) -> bool:
 
 def _get_json(session: requests.Session, url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
     for attempt in range(MAX_RETRIES + 1):
-        response = session.get(url, params=params, timeout=30)
+        try:
+            response = session.get(url, params=params, timeout=30)
+        except requests.RequestException:
+            if attempt == MAX_RETRIES:
+                raise RuntimeError("Metaculus API connection failed after retries") from None
+            time.sleep(_retry_delay(None, attempt))
+            continue
         if response.status_code == 429 or response.status_code >= 500:
             if attempt == MAX_RETRIES:
                 raise RuntimeError(f"Metaculus API request failed with HTTP {response.status_code} after retries")

@@ -1,5 +1,7 @@
 from unittest.mock import Mock, patch
 
+import requests
+
 from audit_metaculus_comments import _get_json, find_credential_types
 
 
@@ -37,6 +39,18 @@ def test_retries_rate_limit_without_logging_response_body():
     successful.json.return_value = {"id": 1}
     session = Mock()
     session.get.side_effect = [limited, successful]
+
+    with patch("audit_metaculus_comments.time.sleep") as sleep:
+        assert _get_json(session, "https://www.metaculus.com/api/users/me") == {"id": 1}
+
+    sleep.assert_called_once_with(2.0)
+
+
+def test_retries_transient_connection_errors():
+    successful = Mock(status_code=200, headers={}, ok=True)
+    successful.json.return_value = {"id": 1}
+    session = Mock()
+    session.get.side_effect = [requests.ConnectionError("transient failure"), successful]
 
     with patch("audit_metaculus_comments.time.sleep") as sleep:
         assert _get_json(session, "https://www.metaculus.com/api/users/me") == {"id": 1}
