@@ -120,12 +120,20 @@ def _comments(session: requests.Session, user_id: int, is_private: bool) -> Iter
         seen_ids.update(valid_page_ids)
         page_number += 1
         visibility = "private" if is_private else "public"
+        expected_total = page.get("count")
         print(
-            f"Fetched {visibility} comments page {page_number}: {len(page_items)} records",
+            f"Fetched {visibility} comments page {page_number}: {len(page_items)} records; "
+            f"unique IDs {len(seen_ids)} of {expected_total if isinstance(expected_total, int) else 'unknown'}",
             flush=True,
         )
         yield from page_items
         next_url = page.get("next")
+        if isinstance(expected_total, int) and len(seen_ids) >= expected_total:
+            break
+        if not page_items:
+            raise RuntimeError(
+                f"Metaculus returned an empty {visibility} comments page before the reported total"
+            )
         url = urljoin(BASE_URL, next_url) if isinstance(next_url, str) and next_url else ""
 
 

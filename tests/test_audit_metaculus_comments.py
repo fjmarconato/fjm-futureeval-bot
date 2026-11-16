@@ -101,3 +101,26 @@ def test_comments_rejects_repeated_page_ids():
             assert "repeated a public comments page" in str(exc)
         else:
             raise AssertionError("expected repeated page IDs to fail")
+
+
+def test_comments_stops_when_reported_total_is_reached():
+    page = {
+        "count": 1,
+        "results": [{"id": 1}],
+        "next": "https://www.metaculus.com/api/comments/?offset=1",
+    }
+    with patch("audit_metaculus_comments._get_json", return_value=page) as get_json:
+        assert list(_comments(Mock(), user_id=7, is_private=False)) == [{"id": 1}]
+
+    get_json.assert_called_once()
+
+
+def test_comments_fails_on_empty_page_before_reported_total():
+    page = {"count": 2, "results": [], "next": "https://www.metaculus.com/api/comments/?offset=1"}
+    with patch("audit_metaculus_comments._get_json", return_value=page):
+        try:
+            list(_comments(Mock(), user_id=7, is_private=False))
+        except RuntimeError as exc:
+            assert "empty public comments page before the reported total" in str(exc)
+        else:
+            raise AssertionError("expected an empty page before total to fail")
