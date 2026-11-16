@@ -1,4 +1,6 @@
-from audit_metaculus_comments import find_credential_types
+from unittest.mock import Mock, patch
+
+from audit_metaculus_comments import _get_json, find_credential_types
 
 
 def test_detects_provider_key_formats_without_returning_values():
@@ -27,3 +29,16 @@ def test_detects_unknown_high_entropy_tokens():
 
 def test_ignores_normal_comment_text():
     assert find_credential_types("The forecast is uncertain and needs more evidence.") == []
+
+
+def test_retries_rate_limit_without_logging_response_body():
+    limited = Mock(status_code=429, headers={"Retry-After": "2"}, ok=False)
+    successful = Mock(status_code=200, headers={}, ok=True)
+    successful.json.return_value = {"id": 1}
+    session = Mock()
+    session.get.side_effect = [limited, successful]
+
+    with patch("audit_metaculus_comments.time.sleep") as sleep:
+        assert _get_json(session, "https://www.metaculus.com/api/users/me") == {"id": 1}
+
+    sleep.assert_called_once_with(2.0)

@@ -7,6 +7,8 @@ import re
 import sys
 import time
 from collections.abc import Iterator
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from math import log2
 from typing import Any
 from urllib.parse import urljoin
@@ -15,7 +17,8 @@ import requests
 
 BASE_URL = "https://www.metaculus.com/api/"
 PAGE_SIZE = 100
-ARCHIVED_DETAIL_DELAY_SECONDS = 1.3
+ARCHIVED_DETAIL_DELAY_SECONDS = 1.6
+MAX_RETRIES = 8
 TOKEN_CANDIDATE = re.compile(r"(?<![A-Za-z0-9])[A-Za-z0-9_-]{32,128}(?![A-Za-z0-9])")
 
 PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
@@ -48,13 +51,36 @@ def _looks_like_token(candidate: str) -> bool:
 
 
 def _get_json(session: requests.Session, url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-    response = session.get(url, params=params, timeout=30)
-    if not response.ok:
-        raise RuntimeError(f"Metaculus API request failed with HTTP {response.status_code}")
-    result = response.json()
-    if not isinstance(result, dict):
-        raise RuntimeError("Metaculus API returned an unexpected response")
-    return result
+    for attempt in range(MAX_RETRIES + 1):
+        response = session.get(url, params=params, timeout=30)
+        if response.status_code == 429 or response.status_code >= 500:
+            if attempt == MAX_RETRIES:
+                raise RuntimeError(f"Metaculus API request failed with HTTP {response.status_code} after retries")
+            retry_after = response.headers.get("Retry-After")
+            delay = _retry_delay(retry_after, attempt)
+            time.sleep(delay)
+            continue
+        if not response.ok:
+            raise RuntimeError(f"Metaculus API request failed with HTTP {response.status_code}")
+        result = response.json()
+        if not isinstance(result, dict):
+            raise RuntimeError("Metaculus API returned an unexpected response")
+        return result
+    raise RuntimeError("Metaculus API retry loop ended unexpectedly")
+
+
+def _retry_delay(retry_after: str | None, attempt: int) -> float:
+    if retry_after:
+        try:
+            return min(120.0, max(1.0, float(retry_after)))
+        except ValueError:
+            try:
+                retry_at = parsedate_to_datetime(retry_after)
+                seconds = (retry_at - datetime.now(retry_at.tzinfo or timezone.utc)).total_seconds()
+                return min(120.0, max(1.0, seconds))
+            except (TypeError, ValueError, OverflowError):
+                pass
+    return min(120.0, float(2 ** (attempt + 1)))
 
 
 def _comments(session: requests.Session, user_id: int, is_private: bool) -> Iterator[dict[str, Any]]:
@@ -121,6 +147,8 @@ def audit() -> tuple[int, list[dict[str, Any]]]:
                     "is_private": bool(comment.get("is_private", is_private)),
                     "detectors": types,
                 })
+            if len(scanned_ids) % 50 == 0:
+                print(f"Scanned {len(scanned_ids)} comments", flush=True)
     return len(scanned_ids), findings
 
 
@@ -131,8 +159,8 @@ def main() -> int:
         print(f"Audit failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
 
-    print(f"Comments scanned: {scanned}")
-    print(f"Potential credential-bearing comments: {len(findings)}")
+    print(f"Comments scanned: {scanned}", flush=True)
+    print(f"Potential credential-bearing comments: {len(findings)}", flush=True)
     for finding in findings:
         print(
             "Finding: "
@@ -140,10 +168,11 @@ def main() -> int:
             f"post_id={finding['post_id']} "
             f"created_at={finding['created_at']} "
             f"private={finding['is_private']} "
-            f"detectors={','.join(finding['detectors'])}"
+            f"detectors={','.join(finding['detectors'])}",
+            flush=True,
         )
     if not findings:
-        print("No known credential patterns detected; this does not rule out unknown formats.")
+        print("No known credential patterns detected; this does not rule out unknown formats.", flush=True)
     return 0
 
 
