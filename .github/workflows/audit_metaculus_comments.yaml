@@ -2,6 +2,12 @@ name: Audit Metaculus comments for exposed credentials
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/audit_metaculus_comments.yaml
+      - audit_metaculus_comments.py
+      - tests/test_audit_metaculus_comments.py
 
 permissions:
   contents: read
@@ -12,6 +18,7 @@ concurrency:
 
 jobs:
   audit:
+    if: github.event_name != 'push' || contains(github.event.head_commit.message, '[audit-now]')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
