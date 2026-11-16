@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 
 import requests
 
-from audit_metaculus_comments import _get_json, find_credential_types
+from audit_metaculus_comments import _comment_text_for_scan, _get_json, find_credential_types
 
 
 def test_detects_provider_key_formats_without_returning_values():
@@ -56,3 +56,23 @@ def test_retries_transient_connection_errors():
         assert _get_json(session, "https://www.metaculus.com/api/users/me") == {"id": 1}
 
     sleep.assert_called_once_with(2.0)
+
+
+def test_archived_comment_failure_uses_prefix_and_marks_incomplete():
+    comment = {"id": 42, "is_text_archived": True, "text": "truncated prefix"}
+    with patch("audit_metaculus_comments._full_comment_text", side_effect=RuntimeError("unavailable")):
+        text, unresolved = _comment_text_for_scan(Mock(), comment)
+
+    assert text == "truncated prefix"
+    assert unresolved is True
+
+
+def test_unarchived_comment_failure_is_not_silently_skipped():
+    comment = {"id": 42, "is_text_archived": False, "text": "ordinary comment"}
+    with patch("audit_metaculus_comments._full_comment_text", side_effect=RuntimeError("unavailable")):
+        try:
+            _comment_text_for_scan(Mock(), comment)
+        except RuntimeError as exc:
+            assert str(exc) == "unavailable"
+        else:
+            raise AssertionError("expected the API error to propagate")

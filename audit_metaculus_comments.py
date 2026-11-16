@@ -18,7 +18,8 @@ import requests
 BASE_URL = "https://www.metaculus.com/api/"
 PAGE_SIZE = 100
 ARCHIVED_DETAIL_DELAY_SECONDS = 1.6
-MAX_RETRIES = 8
+REQUEST_TIMEOUT_SECONDS = 20
+MAX_RETRIES = 3
 TOKEN_CANDIDATE = re.compile(r"(?<![A-Za-z0-9])[A-Za-z0-9_-]{32,128}(?![A-Za-z0-9])")
 
 PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
@@ -53,7 +54,7 @@ def _looks_like_token(candidate: str) -> bool:
 def _get_json(session: requests.Session, url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
     for attempt in range(MAX_RETRIES + 1):
         try:
-            response = session.get(url, params=params, timeout=30)
+            response = session.get(url, params=params, timeout=REQUEST_TIMEOUT_SECONDS)
         except requests.RequestException:
             if attempt == MAX_RETRIES:
                 raise RuntimeError("Metaculus API connection failed after retries") from None
@@ -124,7 +125,19 @@ def _full_comment_text(session: requests.Session, comment: dict[str, Any]) -> st
     return full_text
 
 
-def audit() -> tuple[int, list[dict[str, Any]]]:
+def _comment_text_for_scan(
+    session: requests.Session, comment: dict[str, Any]
+) -> tuple[str, bool]:
+    try:
+        return _full_comment_text(session, comment), False
+    except RuntimeError:
+        if not comment.get("is_text_archived"):
+            raise
+        prefix = comment.get("text")
+        return (prefix if isinstance(prefix, str) else ""), True
+
+
+def audit() -> tuple[int, list[dict[str, Any]], list[int]]:
     token = os.environ.get("METACULUS_TOKEN")
     if not token:
         raise RuntimeError("METACULUS_TOKEN is not configured")
@@ -138,13 +151,17 @@ def audit() -> tuple[int, list[dict[str, Any]]]:
 
     scanned_ids: set[int] = set()
     findings: list[dict[str, Any]] = []
+    unresolved_archived_ids: list[int] = []
     for is_private in (False, True):
         for comment in _comments(session, user_id, is_private):
             comment_id = comment.get("id")
             if not isinstance(comment_id, int) or comment_id in scanned_ids:
                 continue
             scanned_ids.add(comment_id)
-            types = find_credential_types(_full_comment_text(session, comment))
+            comment_text, unresolved = _comment_text_for_scan(session, comment)
+            if unresolved:
+                unresolved_archived_ids.append(comment_id)
+            types = find_credential_types(comment_text)
             if types:
                 findings.append({
                     "comment_id": comment_id,
@@ -154,19 +171,26 @@ def audit() -> tuple[int, list[dict[str, Any]]]:
                     "detectors": types,
                 })
             if len(scanned_ids) % 50 == 0:
-                print(f"Scanned {len(scanned_ids)} comments", flush=True)
-    return len(scanned_ids), findings
+                print(
+                    f"Scanned {len(scanned_ids)} comments; "
+                    f"archived details pending: {len(unresolved_archived_ids)}",
+                    flush=True,
+                )
+    return len(scanned_ids), findings, unresolved_archived_ids
 
 
 def main() -> int:
     try:
-        scanned, findings = audit()
+        scanned, findings, unresolved_archived_ids = audit()
     except Exception as exc:  # Keep response bodies, headers, and comment text out of logs.
         print(f"Audit failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
 
     print(f"Comments scanned: {scanned}", flush=True)
     print(f"Potential credential-bearing comments: {len(findings)}", flush=True)
+    print(f"Archived comments needing retry: {len(unresolved_archived_ids)}", flush=True)
+    for comment_id in unresolved_archived_ids:
+        print(f"Unresolved archived comment: comment_id={comment_id}", flush=True)
     for finding in findings:
         print(
             "Finding: "
@@ -179,7 +203,7 @@ def main() -> int:
         )
     if not findings:
         print("No known credential patterns detected; this does not rule out unknown formats.", flush=True)
-    return 0
+    return 2 if unresolved_archived_ids else 0
 
 
 if __name__ == "__main__":
