@@ -146,7 +146,7 @@ jobs:
           if [[ "${PUBLISH_FORECASTS}" == "true" ]]; then
             args+=(--publish)
           fi
-          poetry run python main.py "${args[@]}"
+          python provider_env_filter.py poetry run python main.py "${args[@]}"
         # this reads the environment variables from the github repository.
         # Store under Settings --> Secrets and variables --> Actions
         env:
