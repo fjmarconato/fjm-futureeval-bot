@@ -92,6 +92,9 @@ def _retry_delay(retry_after: str | None, attempt: int) -> float:
 
 def _comments(session: requests.Session, user_id: int, is_private: bool) -> Iterator[dict[str, Any]]:
     url = urljoin(BASE_URL, "comments/")
+    seen_urls: set[str] = set()
+    seen_ids: set[int] = set()
+    page_number = 0
     params: dict[str, Any] | None = {
         "author": user_id,
         "is_private": str(is_private).lower(),
@@ -99,12 +102,29 @@ def _comments(session: requests.Session, user_id: int, is_private: bool) -> Iter
         "offset": 0,
     }
     while url:
+        if url in seen_urls:
+            visibility = "private" if is_private else "public"
+            raise RuntimeError(f"Metaculus repeated the {visibility} comments pagination cursor")
+        seen_urls.add(url)
         page = _get_json(session, url, params)
         params = None
         results = page.get("results")
         if not isinstance(results, list):
             raise RuntimeError("Metaculus API response omitted comment results")
-        yield from (item for item in results if isinstance(item, dict))
+        page_items = [item for item in results if isinstance(item, dict)]
+        page_ids = [item.get("id") for item in page_items]
+        valid_page_ids = [comment_id for comment_id in page_ids if isinstance(comment_id, int)]
+        if valid_page_ids and all(comment_id in seen_ids for comment_id in valid_page_ids):
+            visibility = "private" if is_private else "public"
+            raise RuntimeError(f"Metaculus repeated a {visibility} comments page")
+        seen_ids.update(valid_page_ids)
+        page_number += 1
+        visibility = "private" if is_private else "public"
+        print(
+            f"Fetched {visibility} comments page {page_number}: {len(page_items)} records",
+            flush=True,
+        )
+        yield from page_items
         next_url = page.get("next")
         url = urljoin(BASE_URL, next_url) if isinstance(next_url, str) and next_url else ""
 
